@@ -14,4 +14,7 @@ class User(Base):
     full_name = Column(String(255), nullable=True)
     
     # Cờ đánh dấu tài khoản có đang hoạt động hay bị khóa
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=False)
+    otp_code = Column(String, nullable=True)     # Lưu mã 6 số
+    otp_expire_at = Column(DateTime, nullable=True) # lưu giờ hêt hạn
+    role = Column(String, default="user")

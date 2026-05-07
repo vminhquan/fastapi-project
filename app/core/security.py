@@ -37,16 +37,56 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     
     return encoded_jwt
 
+# refresh token
+def create_refresh_token(data: dict):
+    """Tạo Refresh Token có hạn 7 ngày"""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    # đóng dấu "refresh"
+    to_encode.update({"exp": expire, "type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return encoded_jwt
+
+def verify_and_refresh_token(refresh_token: str, db: Session) -> str:
+    """Xử lý logic giải mã thẻ Refresh và cấp thẻ Access mới"""
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Token không hợp lệ!")
+            
+        user_email = payload.get("sub")
+        user = user_repo.get_user_by_email(db, email=user_email)
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="Người dùng không tồn tại!")
+            
+        new_access_token = create_access_token(
+            data={"sub": user.email, "role": user.role}
+        )
+        return new_access_token
+        
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh Token đã hết hạn. Vui lòng đăng nhập lại!")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Refresh Token không hợp lệ!")
+    
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security_scheme), db: Session = Depends(get_db)):
     """Verify token và check blacklist"""
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, 
+                                detail="Vui lòng sử dụng Access Token!"
+                                )
         user_email: str = payload.get("sub")
         
         if user_email is None:
@@ -64,10 +104,26 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         if user is None:
             raise HTTPException(status_code=401, detail="Không tìm thấy người dùng này")
         
-        return user_email
+        return user
         
     except ExpiredSignatureError:
         # Bắt riêng lỗi hết hạn
         raise HTTPException(status_code=401, detail="Token đã hết hạn. Vui lòng đăng nhập lại!")
     except JWTError:
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
+    
+class RoleChecker:
+    def __init__(self, allowed_roles: list[str]):
+        self.allowed_roles = allowed_roles
+    def __call__(self, current_user = Depends(get_current_user)):
+        # current_user lúc này là Object User mà hàm cũ trả về
+        if current_user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=403, 
+                detail="Bạn không có quyền thực hiện hành động này!"
+            )
+        return current_user
+
+# Tạo sẵn các "chốt chặn" phổ biến
+admin_only = RoleChecker(["admin"])
+any_user = RoleChecker(["admin", "user"])

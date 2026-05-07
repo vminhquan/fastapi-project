@@ -12,6 +12,7 @@ class UserBase(BaseModel):
 # Request
 class UserCreate(UserBase):
     password: str
+    role: str = "user"
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
@@ -27,6 +28,7 @@ class UserResponse(UserBase):
     
     # Cấu hình Pydantic V2 giúp tự động đọc dữ liệu từ SQLAlchemy Model
     model_config = ConfigDict(from_attributes=True)
+    role: str = "user"
     
 class UserLogin(BaseModel):
     email: EmailStr
@@ -35,3 +37,18 @@ class UserLogin(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+    
+class OTPVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str 
+    
+class ForgotPwdRequest(BaseModel):
+    email: EmailStr
+    
+class ResetPwdRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+    
+class ResendOTPRequest(BaseModel):
+    email: EmailStr

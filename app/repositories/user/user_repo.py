@@ -6,6 +6,11 @@ def get_all_users(db: Session, skip: int = 0, limit: int = 100):
     return users
 
 def create_user(db: Session, user_data: dict):
+    # Ép cứng role là "user". 
+    # Bất kể ở trên người dùng gửi cái gì xuống, đến đây đều bị đè lại thành "user" thường.
+    user_data["role"] = "user"
+    user_data["is_active"] = False
+    # Lúc này bung **user_data ra là an toàn tuyệt đối 100%
     new_user = User(**user_data)
     db.add(new_user)
     db.commit()
