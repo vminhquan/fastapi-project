@@ -4,11 +4,11 @@ import logging
 
 # Import cấu hình Database và các Models
 from app.core.database import engine, Base
-from app.models import user  # Import để SQLAlchemy biết các bảng cần tạo
-from app.models import token  # Import TokenBlacklist model
+from app.models import user, token, booking  
 
 # Import các Router (các nhóm API)
 from app.api.endpoints.users import user as user_api
+from app.api.endpoints.rooms import room as room_api
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ app.add_middleware(
 )
 
 # Gắn các nhóm API vào ứng dụng chính.
-# Thêm prefix để đường dẫn gọn gàng hơn (VD: thay vì viết /products trong file api, ta cấu hình ở đây luôn).
 app.include_router(user_api.router, prefix="/users", tags=["Quản lý Người dùng"])
+app.include_router(room_api.router, prefix="/rooms", tags=["Quản Lý Phòng Chiếu"])
 
 @app.get("/", tags=["Hệ thống"])
 def read_root():

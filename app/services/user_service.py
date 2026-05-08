@@ -200,7 +200,7 @@ def send_otp_email(receiver_email: str, otp: str):
 
     # 1. Soạn nội dung Email
     msg = MIMEMultipart()
-    msg['From'] = f"Hệ Thống Bán Hàng S MARKET <{sender_email}>"
+    msg['From'] = f"Hệ Thống Bán Vé STiket <{sender_email}>"
     msg['To'] = receiver_email
     msg['Subject'] = "Mã OTP Xác Thực Tài Khoản"
 
@@ -213,7 +213,7 @@ def send_otp_email(receiver_email: str, otp: str):
     Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.
     
     Trân trọng,
-    Đội ngũ Hỗ trợ BÁCH HOÁ TỔNG HỢP.
+    Đội ngũ Hỗ trợ Hệ Thống Bán Vé STiket.
     """
     
     # Ép kiểu UTF-8 để gửi tiếng Việt có dấu không bị lỗi font
@@ -271,7 +271,7 @@ def send_forgot_pwd_email(receiver_email: str, otp: str):
     sender_password = settings.SMTP_PASSWORD
 
     msg = MIMEMultipart()
-    msg['From'] = f"Hệ Thống Bán Hàng XYZ <{sender_email}>"
+    msg['From'] = f"Hệ Thống Bán Vé STiket <{sender_email}>"
     msg['To'] = receiver_email
     msg['Subject'] = "Yêu Cầu Khôi Phục Mật Khẩu"
 
