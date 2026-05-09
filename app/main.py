@@ -21,8 +21,8 @@ except Exception as e:
 
 # Khởi tạo app
 app = FastAPI(
-    title="API Quản lý Bán hàng",
-    description="Hệ thống Backend FastAPI kết nối SQL Server",
+    title="API Hệ Thống Bán Vé STICKET",
+    description="Backend FastAPI kết nối SQL Server",
     version="1.0.0"
 )
 

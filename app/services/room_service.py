@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from app.schemas.room import RoomCreate
+from app.schemas.room import RoomCreate,RoomUpdate
 from app.repositories.room import room_repo
 
 def create_new_room(db: Session, room_in: RoomCreate):
     """Logic Tạo Phòng Mới"""
     # 1. Kiểm tra xem tên phòng đã tồn tại chưa
-    existing_room = room_repo.get_room_by_name(db, name=room_in.name)
+    existing_room = room_repo.get_room_by_name(db, room_in.name)
     if existing_room:
         raise HTTPException(
             status_code=400, 
@@ -27,13 +27,37 @@ def get_room_detail(db: Session, room_id: int):
         raise HTTPException(status_code=404, detail="Không tìm thấy phòng chiếu này!")
     return room
 
-def update_room_logic(db: Session, room_id: int):
+def update_room_logic(db: Session, room_id: int, room_in: RoomUpdate): 
     """Logic cập nhật Phòng"""
-    room = room_repo.update_room(db, room_id)
+    
+    # 1. Kiểm tra phòng có tồn tại không
+    room = room_repo.get_room_by_id(db, room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Không tìm thấy phòng chiếu này!")
+        
+    room_data = {}
     
-    return room
+    # 2. Xử lý việc đổi tên phòng
+    if room_in.name and room_in.name != room.name:
+        # Kiểm tra xem tên mới có bị trùng với phòng nào khác không
+        existing_room = room_repo.get_room_by_name(db, room_in.name)
+        if existing_room:
+            raise HTTPException(status_code=400, detail=f"Tên phòng '{room_in.name}' đã tồn tại!")
+        
+        room_data["name"] = room_in.name
+        
+    # 3. Cập nhật sức chứa (capacity) nếu có
+    if room_in.capacity is not None:
+        room_data["capacity"] = room_in.capacity
+        
+    # Nếu người dùng không gửi data gì mới (hoặc gửi y hệt cũ) thì trả về luôn
+    if not room_data:
+        return room
+        
+    # 4. Thực hiện Update xuống Database
+    updated_room = room_repo.update_room(db, room_id, room_data)
+    
+    return updated_room
 
 def delete_room_logic(db: Session, room_id: int):
     """Logic Xóa Phòng - Kèm chốt chặn an toàn"""

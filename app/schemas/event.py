@@ -10,7 +10,7 @@ class EventBase(BaseModel):
 
 class EventCreate(EventBase):
     room_id: int = Field(..., gt=0, description="ID của phòng chiếu")
-
+    film_id: int = Field(..., gt=0, description="ID của phim trong suất chiếu")
 class EventResponse(EventBase):
     id: int
     # Lồng (Nest) schema Room vào trong Event để API trả về đầy đủ thông tin phòng

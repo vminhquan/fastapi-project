@@ -49,10 +49,10 @@ def read_user_by_id(user_id: int, db: Session = Depends(get_db)):
     return user
 
 @router.put("/{user_id}", response_model=user_schema.UserResponse)
-def update_user_endpoint(user_id: int, user_in: user_schema.UserUpdate, db: Session = Depends(get_db)):
+def update_user_endpoint(user_id: int, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
     # Cập nhật user
-    updated_user = user_service.update_user(db, user_id, user_in)
-    return {"message": "User đã được cập nhật thành công", **updated_user}
+    updated_user = user_service.update_user(db, user_id, user_in, background_tasks)
+    return updated_user
 
 @router.delete("/{user_id}")
 def delete_user_endpoint(user_id: int, admin: User = Depends(admin_only), db: Session = Depends(get_db)):

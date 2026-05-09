@@ -85,7 +85,7 @@ def get_user_by_id(db: Session, user_id: int):
         )
     return user
 
-def update_user(db: Session, user_id: int, user_in: user_schema.UserUpdate):
+def update_user(db: Session, user_id: int, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks):
     # Kiểm tra user tồn tại
     user = user_repo.get_user_by_id(db, user_id)
     if not user:
@@ -93,28 +93,38 @@ def update_user(db: Session, user_id: int, user_in: user_schema.UserUpdate):
     
     # Chuẩn bị dữ liệu cập nhật
     user_data = {}
+    email_changed = False 
+    otp_to_send = None 
     
-    if user_in.email:
-        # Check email không trùng với user khác
+    if user_in.email and user_in.email != user.email:
         existing = user_repo.get_user_by_email(db, user_in.email)
-        if existing and existing.id != user_id:
+        if existing:
             raise HTTPException(status_code=400, detail="Email này đã được sử dụng. Vui lòng chọn email khác!")
+        
         user_data["email"] = user_in.email
-    
+        user_data["is_active"] = False 
+        email_changed = True
+        
+        # Sinh OTP và đưa vào user_data để LƯU XUỐNG DATABASE
+        otp_to_send = generate_otp_code()
+        user_data["otp_code"] = otp_to_send
+        user_data["otp_expire_at"] = datetime.now(timezone.utc) + timedelta(minutes=5)
+        
     if user_in.full_name:
         user_data["full_name"] = user_in.full_name
     
     if user_in.password:
-        # Hash password mới
         hashed_pwd = get_password_hash(user_in.password)
         user_data["hashed_password"] = hashed_pwd
     
-    # Nếu không có gì cập nhật
     if not user_data:
         return user
     
-    # Update
+    # Update xuống DB
     updated_user = user_repo.update_user(db, user_id, user_data)
+    if email_changed and otp_to_send:
+        background_tasks.add_task(send_otp_email, updated_user.email, otp_to_send)
+    
     return updated_user
 
 def delete_user(db: Session, user_id: int):
@@ -207,7 +217,7 @@ def send_otp_email(receiver_email: str, otp: str):
     body = f"""
     Xin chào,
     
-    Bạn vừa yêu cầu đăng ký tài khoản tại hệ thống của chúng tôi.
+    Bạn vừa yêu cầu kích hoạt tài khoản tại hệ thống của chúng tôi.
     Mã OTP kích hoạt tài khoản của bạn là: {otp}
     
     Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.
@@ -393,7 +403,8 @@ def resend_otp_logic(db: Session, email: str, background_tasks: BackgroundTasks)
     user.otp_expire_at = datetime.now(timezone.utc) + timedelta(minutes=5)
     
     # 4. Lưu cập nhật xuống DB
-    user_repo.save_user(db, user)
+    db.commit()
+    db.refresh(user)
     
     # 5. Gửi email ngầm (Tái sử dụng lại đúng cái hàm gửi mail lúc đăng ký)
     background_tasks.add_task(send_otp_email, user.email, new_otp)

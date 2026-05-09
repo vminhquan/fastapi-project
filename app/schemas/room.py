@@ -9,7 +9,6 @@ class RoomCreate(RoomBase):
 
 class RoomUpdate(RoomBase):
     pass
-
 class RoomResponse(RoomBase):
     id: int
     

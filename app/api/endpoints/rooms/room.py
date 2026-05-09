@@ -4,7 +4,7 @@ from typing import List
 
 from app.core.database import get_db
 from app.core.security import RoleChecker 
-from app.schemas.room import RoomCreate, RoomResponse
+from app.schemas.room import RoomCreate, RoomResponse,RoomUpdate
 from app.services import room_service
 
 router = APIRouter()
@@ -16,9 +16,9 @@ def create_room(room_in: RoomCreate, db: Session = Depends(get_db)):
     return room_service.create_new_room(db, room_in)
 
 @router.put("/{room_id}", dependencies=[Depends(admin_only)])
-def update_room(room_id: int, db: Session = Depends(get_db)):
+def update_room(room_id: int, room_in: RoomUpdate,db: Session = Depends(get_db)):
     """[ADMIN] Cập nhật phòng chiếu"""
-    room_service.update_room_logic(db, room_id)
+    room_service.update_room_logic(db, room_id, room_in)
     return {"message": "Đã cập nhật phòng chiếu thành công!"}
 
 @router.delete("/{room_id}", dependencies=[Depends(admin_only)])
