@@ -7,6 +7,7 @@ def create_new_room(db: Session, room_in: RoomCreate):
     """Logic Tạo Phòng Mới"""
     # 1. Kiểm tra xem tên phòng đã tồn tại chưa
     existing_room = room_repo.get_room_by_name(db, room_in.name)
+    
     if existing_room:
         raise HTTPException(
             status_code=400, 
@@ -34,7 +35,8 @@ def update_room_logic(db: Session, room_id: int, room_in: RoomUpdate):
     room = room_repo.get_room_by_id(db, room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Không tìm thấy phòng chiếu này!")
-        
+    
+    
     room_data = {}
     
     # 2. Xử lý việc đổi tên phòng
@@ -48,6 +50,7 @@ def update_room_logic(db: Session, room_id: int, room_in: RoomUpdate):
         
     # 3. Cập nhật sức chứa (capacity) nếu có
     if room_in.capacity is not None:
+        
         room_data["capacity"] = room_in.capacity
         
     # Nếu người dùng không gửi data gì mới (hoặc gửi y hệt cũ) thì trả về luôn
@@ -73,4 +76,4 @@ def delete_room_logic(db: Session, room_id: int):
             detail="Không thể xóa! Phòng này đang có lịch chiếu phim. Vui lòng xóa suất chiếu trước."
         )
         
-    return room_repo.delete_room(db, room)
+    return room_repo.delete_room(db, room_id) # viết xong event phải trả về room

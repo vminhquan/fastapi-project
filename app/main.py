@@ -9,6 +9,7 @@ from app.models import user, token, booking
 # Import các Router (các nhóm API)
 from app.api.endpoints.users import user as user_api
 from app.api.endpoints.rooms import room as room_api
+from app.api.endpoints.events import event as event_api
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ except Exception as e:
 # Khởi tạo app
 app = FastAPI(
     title="API Hệ Thống Bán Vé STICKET",
-    description="Backend FastAPI kết nối SQL Server",
+    description="Backend FastAPI",
     version="1.0.0"
 )
 
@@ -36,8 +37,9 @@ app.add_middleware(
 )
 
 # Gắn các nhóm API vào ứng dụng chính.
-app.include_router(user_api.router, prefix="/users", tags=["Quản lý Người dùng"])
-app.include_router(room_api.router, prefix="/rooms", tags=["Quản Lý Phòng Chiếu"])
+app.include_router(user_api.router, prefix="/api/users", tags=["Quản lý Người dùng"])
+app.include_router(room_api.router, prefix="/api/rooms", tags=["Quản Lý Phòng Chiếu"])
+app.include_router(event_api.router, prefix="/api/events", tags=["Quản Lý Suất Chiếu"])
 
 @app.get("/", tags=["Hệ thống"])
 def read_root():

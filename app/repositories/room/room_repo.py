@@ -10,7 +10,7 @@ def get_room_by_id(db: Session, room_id: int):
     """Lấy phòng theo id phòng"""
     return db.query(Room).filter(Room.id == room_id).first()
 
-def get_room_by_name(db: Session, room_name: int):
+def get_room_by_name(db: Session, room_name: str):
     """Lấy phòng theo tên phòng"""
     return db.query(Room).filter(Room.name == room_name).first()
 
@@ -41,13 +41,11 @@ def update_room(db: Session, room_id: int, room_data: dict):
 
 def delete_room(db: Session, room_id: int):
     """Xoá phòng"""
-    # Tìm room trước
     room = db.query(Room).filter(Room.id == room_id).first()
     
     if not room:
-        return False  # room không tồn tại
+        return False
     
-    # Xóa room
     db.delete(room)
     db.commit()
     

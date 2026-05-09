@@ -48,7 +48,7 @@ def read_user_by_id(user_id: int, db: Session = Depends(get_db)):
     user = user_service.get_user_by_id(db, user_id)
     return user
 
-@router.put("/{user_id}", response_model=user_schema.UserResponse)
+@router.put("/{user_id}",  dependencies=[Depends(admin_only)])
 def update_user_endpoint(user_id: int, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
     # Cập nhật user
     updated_user = user_service.update_user(db, user_id, user_in, background_tasks)

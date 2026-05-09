@@ -1,27 +1,27 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
-from app.models.booking import Event,Film
-from app.schemas.event import EventCreate
-from datetime import timedelta
+from app.models.booking import Event
+from datetime import datetime
 
-def create_event_logic(db: Session, event_in: EventCreate):
-    # lấy thông tin film
-    film = db.query(Film).filter(Film.id == event_in.film_id).first()
-    if not film:
-        raise HTTPException(status_code=404, detail="Phim không tồn tại!")
-    # tính thời gian kêt thúc:
-    # Công thức: start_time + thời lượng film + 15 phút dọn phòng
-    calculated_end_time = event_in.start_time + timedelta(minutes=film.duration) + timedelta(minutes=film.duration)
-    
-    new_event_data = {
-        "film_id": event_in.film_id,
-        "room_id": event_in.room_id,
-        "start_time": event_in.start_time,
-        "end_time": calculated_end_time,
-        "price": event_in.price
-    }
-    
-    db.commit(new_event_data)
+def create_event(db: Session, event_data: dict):
+    """Lưu suất chiếu mới vào bảng events"""
+    new_event = Event(**event_data)
+    db.add(new_event)
+    db.commit(new_event)
     db.refresh()
     
-    return new_event_data
+    return new_event
+
+def check_time_conflict(db: Session, room_id:int, start_time: datetime, end_time: datetime):
+    """Kiểm tra có trùng giờ chiếu trong 1 phòng không"""
+    overlapping_event = db.query(Event).filter(
+        Event.room_id == room_id,
+        Event.start_time > start_time, # Phim cũ bắt đầu TRƯỚC KHI phim mới kết thúc
+        Event.end_time < end_time      # Phim cũ kết thúc SAU KHI phim mới bắt đầu
+    ).first()
+    
+    return overlapping_event
+
+def bulk_create_seats(db: Session, seats: list):
+    """Lưu 1 loạt danh sách ghế vào bảng seats cùng lúc (Bulk Insert)"""
+    db.add_all(seats) # Gom 100 cái ghế lại
+    db.commit()
