@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.booking import Room
-from app.schemas.room import RoomCreate
+from app.schemas.room import RoomCreate, RoomUpdate
 
 def get_all_rooms(db: Session, skip: int = 0, limit: int = 100):
     """Lấy tất cả danh sách phòng"""

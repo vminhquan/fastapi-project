@@ -77,4 +77,3 @@ def delete_room_logic(db: Session, room_id: int):
         )
         
     return room_repo.delete_room(db, room_id) # viết xong event phải trả về room
-

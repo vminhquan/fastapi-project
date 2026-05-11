@@ -218,7 +218,7 @@ def send_otp_email(receiver_email: str, otp: str):
     Xin chào,
     
     Bạn vừa yêu cầu kích hoạt tài khoản tại hệ thống của chúng tôi.
-    Mã OTP kích hoạt tài khoản của bạn là: {otp} 
+    Mã OTP kích hoạt tài khoản của bạn là: {otp}
     
     Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.
     

@@ -78,3 +78,10 @@ def delete_room_logic(db: Session, room_id: int):
         
     return room_repo.delete_room(db, room_id) # viết xong event phải trả về room
 
+def get_room_events(db: Session, room_id: int):
+    """Logic Lấy Danh Sách Suất Chiếu (Event) của 1 Phòng"""
+    room = room_repo.get_room_by_id(db, room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="Không tìm thấy phòng chiếu này!")
+    
+    return room.events
