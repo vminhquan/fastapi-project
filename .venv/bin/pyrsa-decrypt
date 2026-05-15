@@ -1,4 +1,4 @@
-#!/Users/vominhquan/Documents/GitHub/fastapi-project/.venv/bin/python3.11
+#!/Users/minhquan/Documents/fastapi-project/.venv/bin/python3.11
 # -*- coding: utf-8 -*-
 import re
 import sys

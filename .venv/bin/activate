@@ -35,7 +35,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/vominhquan/Documents/GitHub/fastapi-project/.venv"
+VIRTUAL_ENV="/Users/minhquan/Documents/fastapi-project/.venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
