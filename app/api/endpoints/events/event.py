@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.event import EventResponse,EventCreate
+from app.schemas.event import EventResponse,EventCreate, EventUpdate
 from app.services import event_service
 from app.core.security import RoleChecker
 
@@ -18,5 +20,50 @@ def create_event_endpoint(
     - Sẽ tự động tính toán giờ kết thúc dựa vào thời lượng phim.
     - Sẽ tự động sinh danh sách ghế dựa vào sức chứa của phòng.
     """
-    new_event = event_service.create_new_event(db, event_in)
-    return new_event
+    return event_service.create_new_event(db, event_in)
+     
+@router.get("/", response_model=List[EventResponse])
+def read_all_events(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db)
+):
+    """Lấy danh sách tất cả suất chiếu"""
+    events = event_service.get_list_events(db, skip=skip, limit=limit)
+    return events
+
+@router.get("/{event_id}", response_model=EventResponse)
+def read_event_detail(
+    event_id: int, 
+    db: Session = Depends(get_db)
+):
+    """Lấy thông tin chi tiết của 1 suất chiếu"""
+    return event_service.get_event_detail(db, event_id)
+
+@router.get("/{event_id}/seats")
+def read_event_seats(
+    event_id: int, 
+    db: Session = Depends(get_db)
+):
+    """Lấy sơ đồ toàn bộ ghế ngồi của suất chiếu này để Frontend vẽ rạp"""
+    return event_service.get_event_seats_logic(db, event_id)
+
+@router.put("/{event_id}", response_model=EventResponse, dependencies=[Depends(admin_only)])
+def update_event(
+    event_id: int, 
+    event_in: EventUpdate, 
+    db: Session = Depends(get_db)
+):
+    """Cập nhật suất chiếu (Có tự động check trùng lịch và tính lại giờ)"""
+    return event_service.update_event_logic(db, event_id, event_in)
+
+@router.delete("/{event_id}", dependencies=[Depends(admin_only)])
+def delete_event(
+    event_id: int, 
+    db: Session = Depends(get_db)
+):
+    """Xoá suất chiếu (Chặn xoá nếu phim đang/đã chiếu)"""
+    success = event_service.delete_event_logic(db, event_id)
+    if success:
+        return {"message": "Xoá suất chiếu thành công!"}
+    raise HTTPException(status_code=400, detail="Xoá suất chiếu thất bại!")

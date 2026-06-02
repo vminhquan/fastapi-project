@@ -1,14 +1,17 @@
 from sqlalchemy.orm import Session
 from app.repositories.event import event_repo
 from app.models.booking import Film, Room, Seat
-from app.schemas.event import EventCreate
+from app.repositories.film import film_repo
+from app.repositories.room import room_repo
+from app.schemas.event import EventCreate,EventUpdate
 from fastapi import HTTPException
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 def create_new_event(db: Session, event_in: EventCreate):
+    """Logic tạo suất chiếu"""
     # Kiểm tra phim có tồn tại không
     film = db.query(Film).filter(Film.id == event_in.film_id).first()
-    if not Film:
+    if not film:
         raise HTTPException(
             status_code=404,
             detail="Bộ phim không tồn tại!"
@@ -16,7 +19,7 @@ def create_new_event(db: Session, event_in: EventCreate):
     
     # Kiểm tra phòng có tồn tại không
     room = db.query(Room).filter(Room.id == event_in.room_id).first()
-    if not Room:
+    if not film:
         raise HTTPException(
             status_code=404,
             detail="Phòng chiếu không tồn tại!"
@@ -61,3 +64,112 @@ def create_new_event(db: Session, event_in: EventCreate):
     event_repo.bulk_create_seats(db, seats_to_create)
     
     return new_event
+
+def get_list_events(db: Session, skip: int = 0, limit: int = 100):
+    """Logic lấy danh sách suất chiếu"""
+    return event_repo.get_all_events(db, skip=skip, limit=limit)
+
+def get_event_detail(db: Session, event_id: int):
+    """Logic lấy suất chiếu theo event"""
+    event = event_repo.get_event_by_id(db, event_id)
+
+    if not event:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy suất chiếu này!"
+        )
+    return event
+
+def get_event_seats_logic(db: Session, event_id: int):
+    """Logic lấy sơ đồ ghế của suất chiếu"""
+    # 1. Kiểm tra xem suất chiếu này có thật không
+    event = event_repo.get_event_by_id(db, event_id)
+    if not event:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy suất chiếu này!"
+        )
+    
+    # 2. Gọi Repo lấy sơ đồ ghế đã được sắp xếp chuẩn
+    return event_repo.get_seats_by_event_id(db, event_id)
+
+def update_event_logic(db: Session, event_id: int, event_in: EventUpdate):
+    """Logic cập nhật suất chiếu"""
+    event = event_repo.get_event_by_id(db, event_id)
+    if not event:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy suất chiếu này!"
+        )
+    
+    event_data = {}
+
+    # 1. Nhóm dữ liệu ảnh hưởng đến Thời gian (Phim, Phòng, Giờ bắt đầu)
+    # Vì Schema Update bắt buộc gửi các trường này, ta so sánh xem nó có khác dữ liệu cũ không
+    if (event_in.film_id != event.film_id) or (event_in.room_id != event.room_id) or (event_in.start_time != event.start_time):
+        
+        # --- BƯỚC A: LẤY THỜI LƯỢNG PHIM ĐỂ TÍNH LẠI END_TIME ---
+        film = film_repo.get_film_by_id(db, event_in.film_id)
+        if not film:
+            raise HTTPException(status_code=404, detail="Không tìm thấy bộ phim này!")
+        
+        room = room_repo.get_room_by_id(db, event_in.room_id)
+        if not room:
+            raise HTTPException(status_code=404, detail="Phòng chiếu không tồn tại!")
+
+        # Tính lại giờ kết thúc mới (Cộng thời lượng phim + 15 phút dọn rạp)
+        new_end_time = event_in.start_time + timedelta(minutes=film.duration + 15)
+
+        # --- BƯỚC B: KIỂM TRA ĐỤNG LỊCH (Bẫy: Nhớ truyền exclude_event_id) ---
+        conflict = event_repo.check_time_conflict(
+            db=db, 
+            room_id=event_in.room_id, 
+            start_time=event_in.start_time, 
+            end_time=new_end_time,
+            exclude_event_id=event.id  # 👈 Chìa khóa ở đây
+        )
+        if conflict:
+            raise HTTPException(
+                status_code=400, 
+                detail="Lỗi: Thời gian này đã bị trùng với một suất chiếu khác trong phòng!"
+            )
+
+        # Lưu lại các thông tin thời gian mới để chuẩn bị update
+        event_data["film_id"] = event_in.film_id
+        event_data["room_id"] = event_in.room_id
+        event_data["start_time"] = event_in.start_time
+        event_data["end_time"] = new_end_time
+
+    # 2. Xử lý đổi Giá vé (Độc lập với thời gian)
+    if event_in.price != event.price:
+        event_data["price"] = event_in.price
+
+    # 3. Gọi tầng Repo để thực thi Update nếu có sự thay đổi
+    if event_data:
+        updated_event = event_repo.update_event(db, event_id, event_data)
+        return updated_event
+        
+    # Nếu Admin bấm "Lưu" nhưng không sửa chữ nào, trả về event cũ luôn (đỡ tốn công gọi DB)
+    return event
+
+def delete_event_logic(db: Session, event_id: int):
+    """Logic xoá suất chiếu"""
+    event = event_repo.get_event_by_id(db, event_id)
+    if not event:
+        raise HTTPException(
+            status_code=404,
+            detail="Không tìm thấy suất chiếu này!"
+        )
+    
+    # Lấy thời gian hiện tại của hệ thống
+    now = datetime.now()
+    
+    # Nếu giờ bắt đầu của suất chiếu nhỏ hơn hoặc bằng giờ hiện tại
+    # -> Tức là phim đang chiếu, hoặc đã chiếu xong từ đời nào rồi
+    if event.start_time <= now:
+        raise HTTPException(
+            status_code=400,
+            detail="Không thể xoá! Suất chiếu này đang diễn ra hoặc đã kết thúc."
+        )
+    
+    return event_repo.delete_event(db, event_id)

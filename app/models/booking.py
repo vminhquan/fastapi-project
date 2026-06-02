@@ -50,7 +50,7 @@ class Event(Base):
     # Quan hệ ngược lại
     film = relationship("Film", back_populates="events")
     room = relationship("Room", back_populates="events")
-    seats = relationship("Seat", back_populates="event")
+    seats = relationship("Seat", back_populates="event", cascade="all, delete")
     
 class Seat(Base):
     __tablename__ = "seats"

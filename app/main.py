@@ -10,6 +10,7 @@ from app.models import user, token, booking
 from app.api.endpoints.users import user as user_api
 from app.api.endpoints.rooms import room as room_api
 from app.api.endpoints.events import event as event_api
+from app.api.endpoints.films import film as film_api
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ except Exception as e:
 
 # Khởi tạo app
 app = FastAPI(
-    title="API Hệ Thống Bán Vé STICKET",
+    title="API Hệ Thống Bán Vé QTIK",
     description="Backend FastAPI",
     version="1.0.0"
 )
@@ -40,7 +41,7 @@ app.add_middleware(
 app.include_router(user_api.router, prefix="/api/users", tags=["Quản lý Người dùng"])
 app.include_router(room_api.router, prefix="/api/rooms", tags=["Quản Lý Phòng Chiếu"])
 app.include_router(event_api.router, prefix="/api/events", tags=["Quản Lý Suất Chiếu"])
-
+app.include_router(film_api.router, prefix="/api/films", tags=["Quản Lý Phim"])
 @app.get("/", tags=["Hệ thống"])
 def read_root():
     return {

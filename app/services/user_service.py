@@ -13,7 +13,7 @@ from app.schemas.user import ResetPwdRequest
 from jose import jwt
 from app.core.security import SECRET_KEY, ALGORITHM
 from app.repositories import token_repo
-    
+
 def register_new_user(db: Session, user_in: user_schema.UserCreate, background_tasks: BackgroundTasks):
     # kiểm tra emai đã tồn tại chưa
     existing_user = user_repo.get_user_by_email(db, email=user_in.email)
@@ -210,7 +210,7 @@ def send_otp_email(receiver_email: str, otp: str):
 
     # 1. Soạn nội dung Email
     msg = MIMEMultipart()
-    msg['From'] = f"Hệ Thống Bán Vé STiket <{sender_email}>"
+    msg['From'] = f"Hệ Thống Bán Vé QTik <{sender_email}>"
     msg['To'] = receiver_email
     msg['Subject'] = "Mã OTP Xác Thực Tài Khoản"
 
@@ -223,7 +223,7 @@ def send_otp_email(receiver_email: str, otp: str):
     Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.
     
     Trân trọng,
-    Đội ngũ Hỗ trợ Hệ Thống Bán Vé STiket.
+    Đội ngũ Hỗ trợ Hệ Thống Bán Vé QTik.
     """
     
     # Ép kiểu UTF-8 để gửi tiếng Việt có dấu không bị lỗi font
@@ -281,7 +281,7 @@ def send_forgot_pwd_email(receiver_email: str, otp: str):
     sender_password = settings.SMTP_PASSWORD
 
     msg = MIMEMultipart()
-    msg['From'] = f"Hệ Thống Bán Vé STiket <{sender_email}>"
+    msg['From'] = f"Hệ Thống Bán Vé QTik <{sender_email}>"
     msg['To'] = receiver_email
     msg['Subject'] = "Yêu Cầu Khôi Phục Mật Khẩu"
 

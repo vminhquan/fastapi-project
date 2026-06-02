@@ -7,6 +7,9 @@ class EventCreate(BaseModel):
     room_id: int = Field(..., description="ID của phòng chiếu")
     start_time: datetime = Field(..., description="Giờ bắt đầu chiếu")
     price: float = Field(..., gt=0, description="Giá vé (phải lớn hơn 0)")
+
+class EventUpdate(EventCreate):
+    pass
 class EventResponse(BaseModel):
     id: int
     film_id: int
@@ -15,4 +18,4 @@ class EventResponse(BaseModel):
     end_time: datetime
     price: float
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True) # dòng này để SQLAlchemy map được với Pydantic

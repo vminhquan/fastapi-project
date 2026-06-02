@@ -33,7 +33,7 @@ def verify_otp(
 # tự động tạo ra 2 ô nhập liệu là skip và limit.
 # Nếu bạn muốn lấy trang 1 (10 người đầu tiên): Nhập skip=0, limit=10.
 # Nếu bạn muốn lấy trang 2 (10 người tiếp theo): Nhập skip=10, limit=10.
-@router.get("/", response_model=List[user_schema.UserResponse])
+@router.get("/", response_model=List[user_schema.UserResponse],dependencies=[Depends(admin_only)])
 def read_all_users(
     skip: int = Query(0, description="Số lượng bản ghi muốn bỏ qua"),
     limit: int = Query(100, description="Số lượng bản ghi tối đa muốn lấy"),
@@ -42,7 +42,7 @@ def read_all_users(
     users = user_service.get_users(db, skip=skip, limit=limit)
     return users
 
-@router.get("/{user_id}", response_model=user_schema.UserResponse)
+@router.get("/{user_id}", response_model=user_schema.UserResponse, dependencies=[Depends(admin_only)])
 def read_user_by_id(user_id: int, db: Session = Depends(get_db)):
     # Lấy user theo ID
     user = user_service.get_user_by_id(db, user_id)

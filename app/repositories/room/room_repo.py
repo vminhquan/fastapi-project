@@ -49,5 +49,5 @@ def delete_room(db: Session, room_id: int):
     db.delete(room)
     db.commit()
     
-    return True
+    return True 
     
