@@ -22,8 +22,9 @@ class Settings(BaseSettings):
     
     # Báo cho Pydantic biết phải tự động tìm và đọc file .env
     model_config = SettingsConfigDict(
-        env_file=str(Path(__file__).parent.parent.parent / ".env"),
-        env_file_encoding="utf-8"
+        env_file=".env",              # Chỉ cần ghi tên file, Pydantic sẽ tự động tìm ở thư mục gốc
+        env_file_encoding="utf-8",
+        extra="ignore"                # Rất quan trọng: Bỏ qua nếu có biến môi trường thừa trên Server
     )
 
 # Khởi tạo đối tượng settings để các file khác gọi dùng
