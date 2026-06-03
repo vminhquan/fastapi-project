@@ -7,15 +7,21 @@ from datetime import date, datetime
 
 def create_new_film(db: Session, film_in: FilmCreate):
     """Logic tạo phim mới"""
-    existing_film = film_repo.get_film_by_title(db, film_repo.title)
+    existing_film = film_repo.get_film_by_title(db, film_in.title)
 
     if existing_film:
         raise HTTPException(
             status_code=400,
             detail=f"Phim mang tên '{film_in.title}' đã tồn tại!"
         )
+
+    if film_in.release_date < date.today():
+        raise HTTPException(
+            status_code=400,
+            detail="Không hợp lệ! Ngày công chiếu không được nằm trong quá khứ."
+        )
     
-    return film_repo.create_film(db, film_in)
+    return film_repo.create_film(db, film_in.model_dump())
 
 def get_list_films(db: Session, skip: int = 0, limit: int =100):
     """Logic lấy danh sách phim"""

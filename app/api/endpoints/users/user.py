@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from app.schemas import user as user_schema
 from app.schemas.user import OTPVerifyRequest, ForgotPwdRequest, ResetPwdRequest, ResendOTPRequest
 from app.services import user_service
-from typing import List, Optional
+from typing import List
 from app.core.database import get_db
-from app.core.security import security_scheme, admin_only, verify_and_refresh_token
+from app.core.security import security_scheme, admin_only, verify_and_refresh_token, any_user
 from fastapi.security import HTTPAuthorizationCredentials
 from app.models.user import User
 from pydantic import BaseModel
@@ -54,8 +54,19 @@ def update_user_endpoint(user_id: int, user_in: user_schema.UserUpdate, backgrou
     updated_user = user_service.update_user(db, user_id, user_in, background_tasks)
     return updated_user
 
-@router.delete("/{user_id}")
-def delete_user_endpoint(user_id: int, admin: User = Depends(admin_only), db: Session = Depends(get_db)):
+@router.put("/me", response_model=user_schema.UserResponse)
+def update_my_profile(
+    user_in: user_schema.UserUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(any_user) # Bất kỳ ai đăng nhập cũng dùng được
+):
+    """API để User tự cập nhật thông tin cá nhân của chính mình"""
+    return user_service.update_user(db, current_user.id, user_in, background_tasks)
+
+
+@router.delete("/{user_id}", dependencies=[Depends(admin_only)])
+def delete_user_endpoint(user_id: int, db: Session = Depends(get_db)):
     result = user_service.delete_user(db, user_id)
     return {"message": "User đã được xóa thành công", **result}
 

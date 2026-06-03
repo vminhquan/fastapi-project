@@ -58,13 +58,13 @@ def check_time_conflict(db: Session,
                         exclude_event_id: int = None
                         ):
     """Kiểm tra có trùng giờ chiếu trong 1 phòng không"""
-    overlapping_event = db.query(Event).filter(
+    query = db.query(Event).filter(
         Event.room_id == room_id,
         Event.start_time < end_time, # Phim cũ bắt đầu TRƯỚC KHI phim mới kết thúc
         Event.end_time > start_time  # Phim cũ kết thúc SAU KHI phim mới bắt đầu
     )
     # Nếu đang Update, loại trừ chính suất chiếu này ra khỏi vòng quét
-    if exclude_event_id:
+    if exclude_event_id is not None:
         query = query.filter(Event.id != exclude_event_id)
         
     return query.first()

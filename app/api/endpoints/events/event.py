@@ -33,6 +33,7 @@ def read_all_events(
     return events
 
 @router.get("/{event_id}", response_model=EventResponse)
+@router.get("/event/{event_id}", response_model=EventResponse)
 def read_event_detail(
     event_id: int, 
     db: Session = Depends(get_db)

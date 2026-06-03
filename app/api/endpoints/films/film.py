@@ -15,11 +15,10 @@ def create_film(film_in: FilmCreate, db: Session = Depends(get_db)):
     """[ADMIN] Tạo phim chiếu mới"""
     return film_service.create_new_film(db, film_in)
 
-@router.put("/{film_id}", dependencies=[Depends(admin_only)])
-def update_film(film_id: int, film_in: FilmUpdate,db: Session = Depends(get_db)):
+@router.put("/{film_id}", response_model=FilmResponse, dependencies=[Depends(admin_only)])
+def update_film(film_id: int, film_in: FilmUpdate, db: Session = Depends(get_db)):
     """[ADMIN] Cập nhật phim chiếu"""
-    film_service.update_film_logic(db, film_id, film_in)
-    return {"message": "Đã cập nhật phim chiếu thành công!"}
+    return film_service.update_film_logic(db, film_id, film_in)
 
 @router.delete("/{film_id}", dependencies=[Depends(admin_only)])
 def delete_film(film_id: int, db: Session = Depends(get_db)):

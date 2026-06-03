@@ -4,13 +4,14 @@ import logging
 
 # Import cấu hình Database và các Models
 from app.core.database import engine, Base
-from app.models import user, token, booking  
 
 # Import các Router (các nhóm API)
 from app.api.endpoints.users import user as user_api
 from app.api.endpoints.rooms import room as room_api
 from app.api.endpoints.events import event as event_api
 from app.api.endpoints.films import film as film_api
+from app.api.endpoints.bookings import booking as booking_api
+from app.api.endpoints.chatbots import chatbot as chatbot_api
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ app = FastAPI(
 # Cho phép các trang web (HTML/JS, React, Vue) ở tên miền khác được phép gọi API này.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Trong thực tế, bạn nên thay "*" bằng URL của web Frontend (VD: ["http://localhost:3000"])
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # Trong thực tế, bạn nên thay "*" bằng URL của web Frontend (VD: ["http://localhost:3000"])
     allow_credentials=True,
     allow_methods=["*"],  # Cho phép tất cả các lệnh GET, POST, PUT, DELETE
     allow_headers=["*"],  # Cho phép tất cả các Headers
@@ -39,9 +40,11 @@ app.add_middleware(
 
 # Gắn các nhóm API vào ứng dụng chính.
 app.include_router(user_api.router, prefix="/api/users", tags=["Quản lý Người dùng"])
-app.include_router(room_api.router, prefix="/api/rooms", tags=["Quản Lý Phòng Chiếu"])
-app.include_router(event_api.router, prefix="/api/events", tags=["Quản Lý Suất Chiếu"])
+app.include_router(room_api.router, prefix="/api/rooms", tags=["Quản Lý Phòng chiếu"])
+app.include_router(event_api.router, prefix="/api/events", tags=["Quản Lý Suất chiếu"])
 app.include_router(film_api.router, prefix="/api/films", tags=["Quản Lý Phim"])
+app.include_router(booking_api.router, prefix="/api/bookings", tags=["Quản Lý Đặt vé"])
+app.include_router(chatbot_api.router, prefix="/api/chat", tags=["Trợ Lý Ảo AI"])
 @app.get("/", tags=["Hệ thống"])
 def read_root():
     return {

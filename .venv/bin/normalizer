@@ -1,6 +1,6 @@
 #!/Users/minhquan/Documents/fastapi-project/.venv/bin/python3.11
 import sys
-from pip._internal.cli.main import main
+from charset_normalizer.cli import cli_detect
 if __name__ == '__main__':
     sys.argv[0] = sys.argv[0].removesuffix('.exe')
-    sys.exit(main())
+    sys.exit(cli_detect())

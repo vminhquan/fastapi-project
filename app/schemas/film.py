@@ -1,11 +1,11 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from datetime import date
 
 class FilmCreate(BaseModel):
     title: str
     duration: int
     description: str
-    release_date: datetime
+    release_date: date
     poster_url: str
 
 class FilmUpdate(FilmCreate):

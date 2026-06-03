@@ -19,7 +19,7 @@ def create_new_event(db: Session, event_in: EventCreate):
     
     # Kiểm tra phòng có tồn tại không
     room = db.query(Room).filter(Room.id == event_in.room_id).first()
-    if not film:
+    if not room:
         raise HTTPException(
             status_code=404,
             detail="Phòng chiếu không tồn tại!"
@@ -108,7 +108,6 @@ def update_event_logic(db: Session, event_id: int, event_in: EventUpdate):
     # Vì Schema Update bắt buộc gửi các trường này, ta so sánh xem nó có khác dữ liệu cũ không
     if (event_in.film_id != event.film_id) or (event_in.room_id != event.room_id) or (event_in.start_time != event.start_time):
         
-        # --- BƯỚC A: LẤY THỜI LƯỢNG PHIM ĐỂ TÍNH LẠI END_TIME ---
         film = film_repo.get_film_by_id(db, event_in.film_id)
         if not film:
             raise HTTPException(status_code=404, detail="Không tìm thấy bộ phim này!")
@@ -120,13 +119,12 @@ def update_event_logic(db: Session, event_id: int, event_in: EventUpdate):
         # Tính lại giờ kết thúc mới (Cộng thời lượng phim + 15 phút dọn rạp)
         new_end_time = event_in.start_time + timedelta(minutes=film.duration + 15)
 
-        # --- BƯỚC B: KIỂM TRA ĐỤNG LỊCH (Bẫy: Nhớ truyền exclude_event_id) ---
         conflict = event_repo.check_time_conflict(
             db=db, 
             room_id=event_in.room_id, 
             start_time=event_in.start_time, 
             end_time=new_end_time,
-            exclude_event_id=event.id  # 👈 Chìa khóa ở đây
+            exclude_event_id=event.id
         )
         if conflict:
             raise HTTPException(

@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime,Boolean
 from app.core.database import Base
+from sqlalchemy.orm import relationship
 
 class User(Base):
     __tablename__ = "users"
@@ -18,3 +19,5 @@ class User(Base):
     otp_code = Column(String, nullable=True)     # Lưu mã 6 số
     otp_expire_at = Column(DateTime, nullable=True) # lưu giờ hêt hạn
     role = Column(String, default="user")
+
+    bookings = relationship("Booking", back_populates="user")

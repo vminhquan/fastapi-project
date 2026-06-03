@@ -18,8 +18,7 @@ def create_room(room_in: RoomCreate, db: Session = Depends(get_db)):
 @router.put("/{room_id}", dependencies=[Depends(admin_only)])
 def update_room(room_id: int, room_in: RoomUpdate,db: Session = Depends(get_db)):
     """[ADMIN] Cập nhật phòng chiếu"""
-    room_service.update_room_logic(db, room_id, room_in)
-    return {"message": "Đã cập nhật phòng chiếu thành công!"}
+    return room_service.update_room_logic(db, room_id, room_in)
 
 @router.delete("/{room_id}", dependencies=[Depends(admin_only)])
 def delete_room(room_id: int, db: Session = Depends(get_db)):
