@@ -34,7 +34,8 @@ app = FastAPI(
 # Cho phép các trang web (HTML/JS, React, Vue) ở tên miền khác được phép gọi API này.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://qtik-frontend.onrender.com"],  # Trong thực tế, bạn nên thay "*" bằng URL của web Frontend (VD: ["http://localhost:3000"])
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://qtik-frontend.onrender.com","https://qtik.io.vn",
+    "https://www.qtik.io.vn",],  # Trong thực tế, bạn nên thay "*" bằng URL của web Frontend (VD: ["http://localhost:3000"])
     allow_credentials=True,
     allow_methods=["*"],  # Cho phép tất cả các lệnh GET, POST, PUT, DELETE
     allow_headers=["*"],  # Cho phép tất cả các Headers
