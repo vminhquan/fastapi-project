@@ -28,6 +28,7 @@ class Film(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), index=True, nullable=False) # Tên phim
+    genre = Column(String(255), nullable=True)              # Thể loại phim
     duration = Column(Integer, nullable=False)              # Thời lượng phim (Tính bằng phút)
     description = Column(Text, nullable=True)               # Mô tả phim
     release_date = Column(Date, nullable=True)              # Ngày công chiếu

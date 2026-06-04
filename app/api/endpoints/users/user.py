@@ -42,6 +42,23 @@ def read_all_users(
     users = user_service.get_users(db, skip=skip, limit=limit)
     return users
 
+@router.get("/me", response_model=user_schema.UserResponse)
+def read_my_profile(
+    current_user: User = Depends(any_user)
+):
+    """API để User xem thông tin cá nhân của chính mình"""
+    return current_user
+
+@router.put("/me", response_model=user_schema.UserResponse)
+def update_my_profile(
+    user_in: user_schema.UserUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(any_user) # Bất kỳ ai đăng nhập cũng dùng được
+):
+    """API để User tự cập nhật thông tin cá nhân của chính mình"""
+    return user_service.update_user(db, current_user.id, user_in, background_tasks)
+
 @router.get("/{user_id}", response_model=user_schema.UserResponse, dependencies=[Depends(admin_only)])
 def read_user_by_id(user_id: int, db: Session = Depends(get_db)):
     # Lấy user theo ID
@@ -53,16 +70,6 @@ def update_user_endpoint(user_id: int, user_in: user_schema.UserUpdate, backgrou
     # Cập nhật user
     updated_user = user_service.update_user(db, user_id, user_in, background_tasks)
     return updated_user
-
-@router.put("/me", response_model=user_schema.UserResponse)
-def update_my_profile(
-    user_in: user_schema.UserUpdate,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(any_user) # Bất kỳ ai đăng nhập cũng dùng được
-):
-    """API để User tự cập nhật thông tin cá nhân của chính mình"""
-    return user_service.update_user(db, current_user.id, user_in, background_tasks)
 
 
 @router.delete("/{user_id}", dependencies=[Depends(admin_only)])

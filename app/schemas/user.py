@@ -6,6 +6,7 @@ class UserBase(BaseModel):
     # Dùng EmailStr thay cho str thông thường để tự động check định dạng email (@gmail.com)
     email: EmailStr 
     full_name: str | None = None
+    phone_number: str | None = None
     date_of_birth: date | None = None
     is_active: bool = True
     
@@ -17,6 +18,8 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
     full_name: str | None = None
+    phone_number: str | None = None
+    date_of_birth: date | None = None
     password: str | None = None
     
 # Response

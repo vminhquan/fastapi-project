@@ -13,6 +13,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     
     full_name = Column(String(255), nullable=True)
+    phone_number = Column(String(20), nullable=True)
     
     # Cờ đánh dấu tài khoản có đang hoạt động hay bị khóa
     is_active = Column(Boolean, default=False)

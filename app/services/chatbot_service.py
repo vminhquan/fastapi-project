@@ -1,70 +1,170 @@
-from app.core.config import settings
+from datetime import datetime, time, timedelta
+import unicodedata
+
 from fastapi import HTTPException
+import requests
 from sqlalchemy.orm import Session
-from google import genai
-from google.genai import types
-from app.models.booking import Film, Event 
 
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+from app.core.config import settings
+from app.models.booking import Event, Film
+from app.models.user import User  # noqa: F401
 
-def get_bot_response_logic(db: Session, user_message: str) -> str:
-    """Logic Chatbot có tích hợp Function Calling (Truy cập Database QTIK)"""
-    
-  
-    # 1. ĐỊNH NGHĨA TOOLS CHO AI
-    # Lưu ý: Phải có Type Hint (str) và Docstring ("""...""") rõ ràng. 
-    # AI sẽ dựa 100% vào Docstring này để quyết định có gọi hàm hay không!
-    def tim_lich_chieu_phim(ten_phim: str) -> str:
-        """
-        Dùng hàm này khi khách hàng hỏi về lịch chiếu, giờ chiếu hoặc giá vé của một bộ phim bất kỳ.
-        Hàm sẽ trả về danh sách các suất chiếu thực tế trong hệ thống.
-        """
-        # Truy vấn Database
-        film = db.query(Film).filter(Film.title.ilike(f"%{ten_phim}%")).first()
-        
-        if not film:
-            return f"Hệ thống báo: Rạp QTIK hiện tại không chiếu bộ phim nào có tên '{ten_phim}'."
-            
-        # Lấy lịch chiếu của phim này (Chỉ lấy các phim chưa chiếu xong)
-        from datetime import datetime
-        now = datetime.now()
-        events = db.query(Event).filter(Event.film_id == film.id, Event.start_time > now).all()
-        
-        if not events:
-            return f"Hệ thống báo: Phim '{film.title}' có trong rạp nhưng hiện chưa có suất chiếu nào sắp diễn ra."
-            
-        # Gom data lịch chiếu lại thành text để AI đọc
-        ket_qua = f"Đây là dữ liệu thực tế lịch chiếu phim '{film.title}':\n"
-        for e in events:
-            gio_chieu = e.start_time.strftime('%H:%M ngày %d/%m/%Y')
-            ket_qua += f"- Suất chiếu lúc {gio_chieu} | Giá vé: {e.price} VND\n"
-            
-        return ket_qua
 
-    # ==========================================
-    # 2. CẤU HÌNH AI & CHỈ THỊ (PROMPT ENGINEERING)
-    # ==========================================
+OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
+
+
+def _normalize_message(message: str) -> str:
+    normalized = unicodedata.normalize("NFD", message.lower().strip())
+    return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+
+
+def _format_price(price: float) -> str:
+    return f"{price:,.0f}".replace(",", ".")
+
+
+def _format_events(events: list[Event], title: str) -> str:
+    if not events:
+        return "QTIK Bot chưa thấy suất chiếu phù hợp trong hệ thống. Bạn thử chọn ngày khác hoặc hỏi tên phim cụ thể nhé."
+
+    lines = [title]
+    for event in events:
+        film_title = event.film.title if event.film else "Không rõ tên phim"
+        room_name = f" - Phòng {event.room.name}" if event.room else ""
+        start_time = event.start_time.strftime("%H:%M ngày %d/%m/%Y")
+        lines.append(f"- {film_title}: {start_time}{room_name} | Giá vé: {_format_price(event.price)} VND")
+
+    return "\n".join(lines)
+
+
+def _get_today_events(db: Session) -> list[Event]:
+    now = datetime.now()
+    tomorrow = datetime.combine(now.date() + timedelta(days=1), time.min)
+    return (
+        db.query(Event)
+        .filter(Event.start_time >= now, Event.start_time < tomorrow)
+        .order_by(Event.start_time)
+        .all()
+    )
+
+
+def _get_upcoming_events(db: Session) -> list[Event]:
+    now = datetime.now()
+    return (
+        db.query(Event)
+        .filter(Event.start_time >= now)
+        .order_by(Event.start_time)
+        .limit(20)
+        .all()
+    )
+
+
+def _find_film_from_message(db: Session, user_message: str) -> Film | None:
+    normalized_message = _normalize_message(user_message)
+    films = db.query(Film).all()
+
+    for film in films:
+        if _normalize_message(film.title) in normalized_message:
+            return film
+
+    return None
+
+
+def _get_events_for_film(db: Session, film_id: int) -> list[Event]:
+    now = datetime.now()
+    return (
+        db.query(Event)
+        .filter(Event.film_id == film_id, Event.start_time >= now)
+        .order_by(Event.start_time)
+        .all()
+    )
+
+
+def _handle_database_intent(db: Session, user_message: str) -> str | None:
+    message = _normalize_message(user_message)
+
+    if not message:
+        return "QTIK Bot đây. Bạn muốn xem phim đang chiếu, lịch chiếu hôm nay hay giá vé phim nào?"
+
+    greetings = {"hello", "hi", "xin chao", "chao", "hey"}
+    if message in greetings:
+        return "Xin chào, mình là QTIK Bot. Bạn muốn xem phim gì hoặc lịch chiếu hôm nay không?"
+
+    film = _find_film_from_message(db, user_message)
+    if film:
+        events = _get_events_for_film(db, film.id)
+        return _format_events(events, f"Lịch chiếu sắp tới của phim '{film.title}':")
+
+    is_today_question = any(keyword in message for keyword in ["hom nay", "toi nay", "ngay nay"])
+    asks_schedule = any(keyword in message for keyword in ["phim", "lich", "chieu", "suat", "ve", "gia"])
+    asks_movies = "phim" in message and any(keyword in message for keyword in ["co gi", "co phim gi", "dang chieu", "lich chieu", "suat chieu", "xem gi"])
+
+    if is_today_question and asks_schedule:
+        events = _get_today_events(db)
+        return _format_events(events, "Các suất chiếu còn lại hôm nay ở QTIK:")
+
+    if asks_movies or any(keyword in message for keyword in ["lich chieu", "suat chieu", "gia ve"]):
+        events = _get_upcoming_events(db)
+        return _format_events(events, "Các phim/suất chiếu sắp tới ở QTIK:")
+
+    cinema_keywords = ["phim", "lich", "chieu", "suat", "ve", "gia", "rap", "phong", "dat","ghe"]
+    if not any(keyword in message for keyword in cinema_keywords):
+        return "QTIK Bot chưa hiểu rõ ý bạn. Bạn có thể hỏi mình về phim đang chiếu, lịch chiếu hôm nay hoặc giá vé nhé."
+
+    return None
+
+
+def _ask_chatgpt(user_message: str) -> str:
+    api_key = settings.CHATGPT_API_KEY or settings.OPENAI_API_KEY
+    if not api_key:
+        return "QTIK Bot chưa được cấu hình API key ChatGPT. Bạn kiểm tra lại biến CHATGPT_API_KEY trong file .env nhé."
+
     system_instruction = """
     Bạn là QTIK Bot, nhân viên tư vấn nhiệt tình của rạp chiếu phim QTIK.
-    QUY TẮC BẮT BUỘC:
-    1. Khi khách hỏi về phim, lịch chiếu hoặc giá vé, BẠN PHẢI DÙNG CÔNG CỤ 'tim_lich_chieu_phim' để tra cứu.
-    2. Tuyệt đối không được tự bịa ra giờ chiếu hoặc giá vé. Chỉ nói dựa trên dữ liệu hệ thống trả về.
-    3. Tư vấn thân thiện, tự nhiên, xưng là "QTIK Bot" và gọi khách là "bạn", dùng emoji cho sinh động.
-    4. Trả lời ngắn gọn, format ngày giờ đẹp mắt.
+    Chỉ trả lời trong phạm vi tư vấn phim, lịch chiếu, suất chiếu, giá vé và đặt vé.
+    Nếu thiếu dữ liệu thực tế, hãy nói cần kiểm tra hệ thống thay vì tự bịa giờ chiếu hoặc giá vé.
+    Trả lời ngắn gọn, thân thiện, xưng là "QTIK Bot" và gọi khách là "bạn".
     """
-    
+
+    payload = {
+        "model": settings.OPENAI_MODEL,
+        "messages": [
+            {"role": "system", "content": system_instruction},
+            {"role": "user", "content": user_message},
+        ],
+        "temperature": 0.3,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
     try:
-        # SDK mới của Google sẽ TỰ ĐỘNG nhận diện, TỰ ĐỘNG chạy hàm Python và TỰ ĐỘNG trả lời
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=user_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                tools=[tim_lich_chieu_phim],
-                temperature=0.3 # Giảm nhiệt độ xuống 0.3 để bot tập trung vào sự thật (data), bớt bay bổng
-            )
+        response = requests.post(
+            OPENAI_CHAT_COMPLETIONS_URL,
+            headers=headers,
+            json=payload,
+            timeout=30,
         )
-        return response.text
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi khi kết nối tới AI: {str(e)}")
+    except requests.RequestException:
+        return "QTIK Bot đang không kết nối được tới ChatGPT. Bạn thử lại sau ít phút nhé."
+
+    if response.status_code == 429:
+        return "QTIK Bot đang bị giới hạn lượt gọi AI tạm thời. Bạn vẫn có thể hỏi mình về phim, lịch chiếu hoặc giá vé trong hệ thống nhé."
+
+    if response.status_code >= 400:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi khi kết nối tới ChatGPT: {response.text}",
+        )
+
+    data = response.json()
+    return data["choices"][0]["message"]["content"]
+
+
+def get_bot_response_logic(db: Session, user_message: str) -> str:
+    """Logic chatbot QTIK: ưu tiên dữ liệu hệ thống, chỉ gọi ChatGPT khi cần tư vấn tự nhiên."""
+    database_reply = _handle_database_intent(db, user_message)
+    if database_reply:
+        return database_reply
+
+    return _ask_chatgpt(user_message)

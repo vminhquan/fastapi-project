@@ -68,6 +68,8 @@ def register_new_user(db: Session, user_in: user_schema.UserCreate, background_t
     user_data = {
         "email": user_in.email,
         "full_name": user_in.full_name,
+        "phone_number": user_in.phone_number,
+        "date_of_birth": user_in.date_of_birth,
         "hashed_password": hashed_pwd,
         "otp_code": otp,                  
         "otp_expire_at": expire_time
@@ -125,6 +127,12 @@ def update_user(db: Session, user_id: int, user_in: user_schema.UserUpdate, back
         
     if user_in.full_name:
         user_data["full_name"] = user_in.full_name
+
+    if user_in.phone_number is not None:
+        user_data["phone_number"] = user_in.phone_number
+
+    if user_in.date_of_birth is not None:
+        user_data["date_of_birth"] = user_in.date_of_birth
     
     if user_in.password:
         hashed_pwd = get_password_hash(user_in.password)

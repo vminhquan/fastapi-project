@@ -64,6 +64,15 @@ def update_film_logic(db: Session, film_id: int, film_in: FilmUpdate):
     if film_in.description and film_in.description != film.description:
         film_data["description"] = film_in.description
 
+    if film_in.genre is not None and film_in.genre != film.genre:
+        film_data["genre"] = film_in.genre
+
+    if film_in.duration and film_in.duration != film.duration:
+        film_data["duration"] = film_in.duration
+
+    if film_in.poster_url and film_in.poster_url != film.poster_url:
+        film_data["poster_url"] = film_in.poster_url
+
     # xử lí đổi ngày công chiếu
     if film_in.release_date and film_in.release_date != film.release_date:
         if film_in.release_date < date.today():

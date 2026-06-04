@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.booking import Event, Seat
+from app.models.booking import Booking, Event, Seat
 from datetime import datetime
 
 def create_event(db: Session, event_data: dict):
@@ -18,6 +18,10 @@ def get_all_events(db: Session, skip: int = 0, limit: int = 100):
 def get_event_by_id(db: Session, event_id: int):
     """Lấy suất chiếu theo id"""
     return db.query(Event).filter(Event.id == event_id).first()
+
+def has_bookings(db: Session, event_id: int):
+    """Kiểm tra suất chiếu đã phát sinh booking chưa"""
+    return db.query(Booking.id).filter(Booking.event_id == event_id).first() is not None
 
 def update_event(db: Session, event_id: int, event_data: dict):
     """Cập nhật thông tin của suất chiếu theo id"""

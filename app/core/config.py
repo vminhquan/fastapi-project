@@ -14,14 +14,17 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
+    CHATGPT_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
     # Resend Email API
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "QTIK Cinemas <onboarding@resend.dev>"
 
     # Email được tự động nâng quyền admin, phân tách bằng dấu phẩy nếu có nhiều email
-    ADMIN_EMAILS: str = ""
+    ADMIN_EMAILS: str = "vmquan44@gmail.com"
     
     # Báo cho Pydantic biết phải tự động tìm và đọc file .env
     model_config = SettingsConfigDict(

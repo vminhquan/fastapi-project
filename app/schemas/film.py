@@ -3,6 +3,7 @@ from datetime import date
 
 class FilmCreate(BaseModel):
     title: str
+    genre: str | None = None
     duration: int
     description: str
     release_date: date

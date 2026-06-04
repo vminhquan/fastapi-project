@@ -169,5 +169,11 @@ def delete_event_logic(db: Session, event_id: int):
             status_code=400,
             detail="Không thể xoá! Suất chiếu này đang diễn ra hoặc đã kết thúc."
         )
+
+    if event_repo.has_bookings(db, event_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Không thể xoá! Suất chiếu này đã có booking/vé phát sinh, cần giữ lại để bảo vệ lịch sử giao dịch."
+        )
     
     return event_repo.delete_event(db, event_id)

@@ -9,5 +9,4 @@ passlib[bcrypt]
 python-multipart
 python-dotenv
 requests
-google-genai
 resend
