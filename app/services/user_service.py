@@ -5,14 +5,12 @@ from app.schemas import user as user_schema
 from app.core.security import get_password_hash,verify_password, create_access_token, create_refresh_token
 from datetime import datetime, timedelta, timezone
 from app.core.utils import generate_otp_code
-import smtplib
-from email.mime.text import MIMEText
 from app.core.config import settings
-from email.mime.multipart import MIMEMultipart
 from app.schemas.user import ResetPwdRequest
 from jose import jwt
 from app.core.security import SECRET_KEY, ALGORITHM
 from app.repositories import token_repo
+import resend
 
 def register_new_user(db: Session, user_in: user_schema.UserCreate, background_tasks: BackgroundTasks):
     # kiểm tra emai đã tồn tại chưa
@@ -201,44 +199,32 @@ def logout_user(db: Session, token: str):
             detail=f"Logout thất bại: {str(e)}"
         )
 
+def _send_email(receiver_email: str, subject: str, html: str):
+    """Gửi email qua Resend HTTP API để tránh bị Render chặn SMTP."""
+    if not settings.RESEND_API_KEY:
+        raise ValueError("Thiếu biến môi trường RESEND_API_KEY")
+
+    resend.api_key = settings.RESEND_API_KEY
+    params = {
+        "from": settings.RESEND_FROM_EMAIL,
+        "to": receiver_email,
+        "subject": subject,
+        "html": html,
+    }
+    return resend.Emails.send(params)
+
 # Hàm gửi email chứa mã OTP
 def send_otp_email(receiver_email: str, otp: str):
-    """Hàm gửi email thực tế qua giao thức SMTP của Google"""
-    
-    sender_email = settings.SMTP_EMAIL
-    sender_password = settings.SMTP_PASSWORD
-
-    # 1. Soạn nội dung Email
-    msg = MIMEMultipart()
-    msg['From'] = f"Hệ Thống Bán Vé QTik <{sender_email}>"
-    msg['To'] = receiver_email
-    msg['Subject'] = "Mã OTP Xác Thực Tài Khoản"
-
-    body = f"""
-    Xin chào,
-    
-    Bạn vừa yêu cầu kích hoạt tài khoản tại hệ thống của chúng tôi.
-    Mã OTP kích hoạt tài khoản của bạn là: {otp} 
-    
-    Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.
-    
-    Trân trọng,
-    Đội ngũ Hỗ trợ Hệ Thống Bán Vé QTik.
+    """Gửi OTP xác thực tài khoản qua Resend Email API."""
+    html = f"""
+    <p>Xin chào,</p>
+    <p>Bạn vừa yêu cầu kích hoạt tài khoản tại hệ thống của chúng tôi.</p>
+    <p>Mã OTP kích hoạt tài khoản của bạn là: <strong>{otp}</strong></p>
+    <p>Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
+    <p>Trân trọng,<br>Đội ngũ Hỗ trợ Hệ Thống Bán Vé QTik.</p>
     """
-    
-    # Ép kiểu UTF-8 để gửi tiếng Việt có dấu không bị lỗi font
-    msg.attach(MIMEText(body, 'plain', 'utf-8'))
-
     try:
-        # 2. Kết nối tới Server của Google và Gửi
-        # Gmail dùng port 587 cho TLS
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()  # Khởi động chế độ bảo mật
-        server.login(sender_email, sender_password)
-        
-        server.send_message(msg)
-        server.quit()
-        
+        _send_email(receiver_email, "Mã OTP Xác Thực Tài Khoản", html)
         print(f"[SUCCESS] Đã gửi OTP thực tế thành công tới {receiver_email}")
     except Exception as e:
         print(f"[ERROR] Lỗi không thể gửi email: {e}")
@@ -276,31 +262,16 @@ def verify_otp_logic(db: Session, email: str, otp: str):
 
 # gửi otp cấp lại pwd
 def send_forgot_pwd_email(receiver_email: str, otp: str):
-    """Hàm gửi otp cấp lại mật khẩu"""
-    sender_email = settings.SMTP_EMAIL
-    sender_password = settings.SMTP_PASSWORD
-
-    msg = MIMEMultipart()
-    msg['From'] = f"Hệ Thống Bán Vé QTik <{sender_email}>"
-    msg['To'] = receiver_email
-    msg['Subject'] = "Yêu Cầu Khôi Phục Mật Khẩu"
-
-    body = f"""
-    Xin chào,
-    
-    Hệ thống vừa nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn.
-    Mã OTP của bạn là: {otp}
-    
-    Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này!
+    """Gửi OTP cấp lại mật khẩu qua Resend Email API."""
+    html = f"""
+    <p>Xin chào,</p>
+    <p>Hệ thống vừa nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn.</p>
+    <p>Mã OTP của bạn là: <strong>{otp}</strong></p>
+    <p>Lưu ý: Mã này chỉ có hiệu lực trong vòng 5 phút. Nếu bạn không yêu cầu đổi mật khẩu, vui lòng bỏ qua email này!</p>
     """
-    msg.attach(MIMEText(body, 'plain', 'utf-8'))
-
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        server.send_message(msg)
-        server.quit()
+        _send_email(receiver_email, "Yêu Cầu Khôi Phục Mật Khẩu", html)
+        print(f"[SUCCESS] Đã gửi OTP khôi phục mật khẩu thành công tới {receiver_email}")
     except Exception as e:
         print(f"[ERROR] Lỗi gửi mail: {e}")
         

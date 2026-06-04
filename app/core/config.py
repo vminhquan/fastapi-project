@@ -16,9 +16,9 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str
 
-    # PTP SMTP
-    SMTP_EMAIL: str
-    SMTP_PASSWORD: str
+    # Resend Email API
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "QTIK Cinemas <onboarding@resend.dev>"
     
     # Báo cho Pydantic biết phải tự động tìm và đọc file .env
     model_config = SettingsConfigDict(
