@@ -25,6 +25,11 @@ def get_user_by_email(db: Session, email: str):
     # Tìm user theo email
     return db.query(User).filter(User.email == email).first()
 
+def save_user(db: Session, user: User):
+    db.commit()
+    db.refresh(user)
+    return user
+
 def update_user(db: Session, user_id: int, user_data: dict):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:

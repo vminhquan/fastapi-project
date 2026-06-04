@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Resend Email API
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "QTIK Cinemas <onboarding@resend.dev>"
+
+    # Email được tự động nâng quyền admin, phân tách bằng dấu phẩy nếu có nhiều email
+    ADMIN_EMAILS: str = ""
     
     # Báo cho Pydantic biết phải tự động tìm và đọc file .env
     model_config = SettingsConfigDict(

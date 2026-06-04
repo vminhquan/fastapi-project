@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 # Import cấu hình Database và các Models
-from app.core.database import engine, Base
+from app.core.database import engine, Base, SessionLocal
+from app.core.config import settings
+from app.models.user import User
 
 # Import các Router (các nhóm API)
 from app.api.endpoints.users import user as user_api
@@ -45,10 +47,31 @@ app.include_router(event_api.router, prefix="/api/events", tags=["Quản Lý Su�
 app.include_router(film_api.router, prefix="/api/films", tags=["Quản Lý Phim"])
 app.include_router(booking_api.router, prefix="/api/bookings", tags=["Quản Lý Đặt vé"])
 app.include_router(chatbot_api.router, prefix="/api/chat", tags=["Trợ Lý Ảo AI"])
+
+@app.on_event("startup")
+def seed_admin_users():
+    admin_emails = [
+        email.strip().lower()
+        for email in settings.ADMIN_EMAILS.split(",")
+        if email.strip()
+    ]
+    if not admin_emails:
+        return
+
+    db = SessionLocal()
+    try:
+        users = db.query(User).filter(User.email.in_(admin_emails)).all()
+        for user in users:
+            if user.role != "admin":
+                user.role = "admin"
+        db.commit()
+        logger.info("Seeded %s admin user(s)", len(users))
+    finally:
+        db.close()
+
 @app.get("/", tags=["Hệ thống"])
 def read_root():
     return {
         "status": "Hoạt động bình thường",
         "message": "Chào mừng đến với hệ thống API của tôi!"
     }
-

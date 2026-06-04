@@ -12,6 +12,14 @@ from app.core.security import SECRET_KEY, ALGORITHM
 from app.repositories import token_repo
 import resend
 
+def _is_admin_email(email: str) -> bool:
+    admin_emails = {
+        admin_email.strip().lower()
+        for admin_email in settings.ADMIN_EMAILS.split(",")
+        if admin_email.strip()
+    }
+    return email.lower() in admin_emails
+
 def register_new_user(db: Session, user_in: user_schema.UserCreate, background_tasks: BackgroundTasks):
     # kiểm tra emai đã tồn tại chưa
     existing_user = user_repo.get_user_by_email(db, email=user_in.email)
@@ -43,6 +51,8 @@ def register_new_user(db: Session, user_in: user_schema.UserCreate, background_t
         existing_user.otp_expire_at = datetime.now(timezone.utc) + timedelta(minutes=5)
         # Cập nhật cả mật khẩu nếu họ lỡ gõ mật khẩu khác ở lần đăng ký này
         existing_user.hashed_password = get_password_hash(user_in.password)
+        if _is_admin_email(existing_user.email):
+            existing_user.role = "admin"
         
         user_repo.save_user(db, existing_user)
         background_tasks.add_task(send_otp_email, existing_user.email, otp)
@@ -65,6 +75,11 @@ def register_new_user(db: Session, user_in: user_schema.UserCreate, background_t
     
     # Gọi Repository để Insert vào Database
     created_user = user_repo.create_user(db, user_data)
+    if _is_admin_email(created_user.email):
+        created_user.role = "admin"
+        db.commit()
+        db.refresh(created_user)
+
     # 6. Giao việc gửi email cho BackgroundTasks xử lý ngầm để API trả kết quả ngay lập tức
     background_tasks.add_task(send_otp_email, created_user.email, otp)
     
