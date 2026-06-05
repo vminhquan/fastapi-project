@@ -19,9 +19,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
 
+    DATABASE_URL: str
+    DIRECT_DATABASE_URL: str = ""
+
     # Resend Email API
     RESEND_API_KEY: str = ""
-    RESEND_FROM_EMAIL: str = "QTIK Cinemas <onboarding@resend.dev>"
+    RESEND_FROM_EMAIL: str = ""
 
     # Email được tự động nâng quyền admin, phân tách bằng dấu phẩy nếu có nhiều email
     ADMIN_EMAILS: str = "vmquan44@gmail.com"
