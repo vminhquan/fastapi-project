@@ -1,11 +1,13 @@
 from sqlalchemy import Column, Integer, String, DateTime,Boolean
 from app.core.database import Base
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 class User(Base):
     __tablename__ = "users"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     # email thường dùng làm tài khoản đăng nhập nên cần unique=True (duy nhất)
     email = Column(String(255), unique=True, index=True, nullable=False)
     date_of_birth = Column(DateTime, index=True)
@@ -21,4 +23,4 @@ class User(Base):
     otp_expire_at = Column(DateTime, nullable=True) # lưu giờ hêt hạn
     role = Column(String, default="user")
 
-    bookings = relationship("Booking", back_populates="user")
+    orders = relationship("Order", back_populates="user")

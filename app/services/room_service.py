@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from uuid import UUID
 from fastapi import HTTPException
 from app.schemas.room import RoomCreate,RoomUpdate
 from app.repositories.room import room_repo
@@ -21,14 +22,14 @@ def get_list_rooms(db: Session, skip: int = 0, limit: int = 100):
     """Logic Lấy Danh Sách Phòng"""
     return room_repo.get_all_rooms(db, skip=skip, limit=limit)
 
-def get_room_detail(db: Session, room_id: int):
+def get_room_detail(db: Session, room_id: UUID):
     """Logic Lấy Chi Tiết 1 Phòng"""
     room = room_repo.get_room_by_id(db, room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Không tìm thấy phòng chiếu này!")
     return room
 
-def update_room_logic(db: Session, room_id: int, room_in: RoomUpdate): 
+def update_room_logic(db: Session, room_id: UUID, room_in: RoomUpdate):
     """Logic cập nhật Phòng"""
     
     # 1. Kiểm tra phòng có tồn tại không
@@ -62,7 +63,7 @@ def update_room_logic(db: Session, room_id: int, room_in: RoomUpdate):
     
     return updated_room
 
-def delete_room_logic(db: Session, room_id: int):
+def delete_room_logic(db: Session, room_id: UUID):
     """Logic Xóa Phòng - Kèm chốt chặn an toàn"""
     room = room_repo.get_room_by_id(db, room_id)
     if not room:
@@ -77,4 +78,3 @@ def delete_room_logic(db: Session, room_id: int):
         )
         
     return room_repo.delete_room(db, room_id) # viết xong event phải trả về room
-

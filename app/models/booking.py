@@ -1,8 +1,10 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Float, Text, Date
+from sqlalchemy import UniqueConstraint, Column, Integer, String, DateTime, ForeignKey, Enum, Text, Date
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 import enum
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 class SeatStatus(enum.Enum):
     AVAILABLE = "available"
@@ -10,13 +12,18 @@ class SeatStatus(enum.Enum):
     SOLD = "sold"
 
 class BookingStatus(enum.Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    HELD = "held"   # Đang giữ ghế
+    CONFIRMED = "confirmed" # Đã thanh toán và xác nhận ghế
+    EXPIRED = "expired"   # Hết thời gian giữ
+    CANCELLED = "cancelled" # Người dùng/hệ thống hủy
 
+class TicketStatus(enum.Enum):
+    ISSUED = "issued"
+    USED = "used"
+    EXPIRED = "expired"
 class Room(Base):
     __tablename__ = "rooms"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     name = Column(String(255), unique=True, index=True)
     capacity = Column(Integer)
 
@@ -26,7 +33,7 @@ class Room(Base):
 class Film(Base):
     __tablename__ = "films"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     title = Column(String(255), index=True, nullable=False) # Tên phim
     genre = Column(String(255), nullable=True)              # Thể loại phim
     duration = Column(Integer, nullable=False)              # Thời lượng phim (Tính bằng phút)
@@ -36,18 +43,19 @@ class Film(Base):
     
     # Mối quan hệ 1-N: 1 Phim có nhiều Suất chiếu (Event)
     events = relationship("Event", back_populates="film")
+
 class Event(Base):
     __tablename__ = "events"
     
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     
     # Khóa ngoại liên kết tới Phim và Phòng
-    film_id = Column(Integer, ForeignKey("films.id"), nullable=False)
-    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+    film_id = Column(UUID(as_uuid=True), ForeignKey("films.id", ondelete="CASCADE"), nullable=False, index=True)
+    room_id = Column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False, index=True)
     
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False) 
-    price = Column(Float, nullable=False)
+    price = Column(Integer, nullable=False)
     
     # Quan hệ ngược lại
     film = relationship("Film", back_populates="events")
@@ -57,41 +65,101 @@ class Event(Base):
     
 class Seat(Base):
     __tablename__ = "seats"
-    id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("event_id", "seat_code"),
+    )
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
     seat_code = Column(String, nullable=False)
-    status = Column(Enum(SeatStatus), default=SeatStatus.AVAILABLE)
+    status = Column(Enum(SeatStatus), default=SeatStatus.AVAILABLE, nullable=False)
 
     event = relationship("Event", back_populates="seats")
     
 class Booking(Base):
     __tablename__ = "bookings"
     
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
-    total_price = Column(Float, nullable=False) 
-    
-    status = Column(Enum(BookingStatus), default=BookingStatus.PENDING)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(
+    Enum(BookingStatus),
+    nullable=False,
+    default=BookingStatus.HELD,
+    )
+
+    hold_expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
-    expire_at = Column(DateTime) # Hạn chót để thanh toán (VD: 5 phút giữ ghế)
+    updated_at = Column(DateTime,
+    default=datetime.now,
+    onupdate=datetime.now,
+    nullable=False,)
+
+    confirmed_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
 
     # Quan hệ
-    tickets = relationship("Ticket", back_populates="booking", cascade="all, delete")
-    user = relationship("User", back_populates="bookings")
+    booking_items = relationship("BookingItem", back_populates="booking", cascade="all, delete")
+    order = relationship(
+    "Order",
+    back_populates="booking",
+    uselist=False,
+    )
     event = relationship("Event", back_populates="bookings")
+
+class BookingItem(Base):
+    __tablename__ = "booking_items"
+    __table_args__ = (
+        UniqueConstraint(
+            "booking_id",
+            "seat_id"
+        ),
+    )
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    booking_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("bookings.id"),
+        nullable=False,
+    )
+    seat_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("seats.id"),
+        nullable=False,
+    )
+    unit_price = Column(Integer, nullable=False)
+    created_at = Column(
+        DateTime,
+        default=datetime.now,
+        nullable=False,
+    )
+    booking = relationship("Booking", back_populates="booking_items")
+    seat = relationship("Seat")
+    ticket = relationship(
+        "Ticket",
+        back_populates="booking_item",
+        uselist=False,
+    )
+
+    @property
+    def seat_code(self):
+        return self.seat.seat_code if self.seat else ""
 
 class Ticket(Base):
     __tablename__ = "tickets"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(Integer, ForeignKey("bookings.id"), nullable=False)
-    seat_id = Column(Integer, ForeignKey("seats.id"), nullable=False)
-    
-    # Giá của riêng cái ghế này tại thời điểm mua
-    price = Column(Float, nullable=False) 
 
-    # Quan hệ
-    booking = relationship("Booking", back_populates="tickets")
-    seat = relationship("Seat")
- 
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    booking_item_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("booking_items.id"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    qr_token = Column(String(255), nullable=False, unique=True)
+    issued_at = Column(DateTime, nullable=False, default=datetime.now)
+    used_at = Column(DateTime, nullable=True)
+    status = Column(Enum(TicketStatus), nullable=False, default=TicketStatus.ISSUED)
+
+    booking_item = relationship(
+        "BookingItem",
+        back_populates="ticket"
+    )

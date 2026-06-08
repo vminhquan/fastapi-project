@@ -1,52 +1,105 @@
-from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from enum import Enum
-from app.schemas.seat import SeatResponse
+from uuid import UUID
 
-from pydantic import BaseModel, Field, ConfigDict
-from datetime import datetime
-from typing import List
-from enum import Enum
-# from app.schemas.seat import SeatResponse (Không cần cái này ở đây nữa, ta sẽ dùng TicketResponse)
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.schemas.order import OrderResponse
+
 
 class BookingStatus(str, Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
+    HELD = "held"
+    CONFIRMED = "confirmed"
+    EXPIRED = "expired"
     CANCELLED = "cancelled"
 
-# ========================================================
-# 1. ĐẦU VÀO: Mua NHIỀU ghế trong 1 lần
-# ========================================================
+
+class TicketStatus(str, Enum):
+    ISSUED = "issued"
+    USED = "used"
+    EXPIRED = "expired"
+
 class BookingCreate(BaseModel):
-    event_id: int = Field(..., gt=0, description="ID của suất chiếu")
-    
-    # Bắt buộc là List (mảng) để mua nhiều ghế, min_length=1 để chặn mảng rỗng
-    seat_ids: List[int] = Field(..., min_length=1, description="Danh sách ID các ghế muốn đặt")
-    
-    # user_id tự lấy từ Token (Chuẩn!)
+    event_id: UUID
+    seat_ids: list[UUID] = Field(..., min_length=1)
+
+    @field_validator("seat_ids")
+    @classmethod
+    def validate_unique_seats(cls, seat_ids: list[UUID]):
+        if len(seat_ids) != len(set(seat_ids)):
+            raise ValueError("Danh sách ghế không được trùng nhau")
+        return seat_ids
 
 
-# ========================================================
-# 2. ĐẦU RA: Trả về 1 Hóa đơn chứa nhiều vé bên trong
-# ========================================================
-
-# Thêm 1 schema nhỏ gọn này để hiển thị chi tiết từng vé
 class TicketResponse(BaseModel):
-    id: int
-    seat_id: int
-    price: float
+    id: UUID
+    qr_token: str
+    issued_at: datetime
+    used_at: datetime | None = None
+    status: TicketStatus
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookingFilmResponse(BaseModel):
+    id: UUID
+    title: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BookingRoomResponse(BaseModel):
+    id: UUID
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BookingEventResponse(BaseModel):
+    id: UUID
+    start_time: datetime
+    end_time: datetime
+    film: BookingFilmResponse
+    room: BookingRoomResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserTicketResponse(TicketResponse):
+    booking_id: UUID
+    booking_item_id: UUID
+    event_id: UUID
+    seat_id: UUID
+    seat_code: str
+    unit_price: int
+
+
+class BookingItemResponse(BaseModel):
+    id: UUID
+    seat_id: UUID
+    seat_code: str
+    unit_price: int
+    created_at: datetime
+    ticket: TicketResponse | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 class BookingResponse(BaseModel):
-    id: int
-    user_id: int
-    event_id: int
-    total_price: float
+    id: UUID
+    event_id: UUID
     status: BookingStatus
+    hold_expires_at: datetime
     created_at: datetime
-    expire_at: datetime
-    
-    # 👈 Mấu chốt: Lồng danh sách vé vào bên trong Hóa đơn
-    tickets: List[TicketResponse] 
-    
+    updated_at: datetime
+    confirmed_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    booking_items: list[BookingItemResponse]
+    event: BookingEventResponse
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class BookingCheckoutResponse(BaseModel):
+    booking: BookingResponse
+    order: OrderResponse

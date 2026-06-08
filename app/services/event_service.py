@@ -4,8 +4,10 @@ from app.models.booking import Film, Room, Seat
 from app.repositories.film import film_repo
 from app.repositories.room import room_repo
 from app.schemas.event import EventCreate,EventUpdate
+from app.services import booking_service
 from fastapi import HTTPException
 from datetime import datetime, timedelta
+from uuid import UUID
 
 def create_new_event(db: Session, event_in: EventCreate):
     """Logic tạo suất chiếu"""
@@ -69,7 +71,7 @@ def get_list_events(db: Session, skip: int = 0, limit: int = 100):
     """Logic lấy danh sách suất chiếu"""
     return event_repo.get_all_events(db, skip=skip, limit=limit)
 
-def get_event_detail(db: Session, event_id: int):
+def get_event_detail(db: Session, event_id: UUID):
     """Logic lấy suất chiếu theo event"""
     event = event_repo.get_event_by_id(db, event_id)
 
@@ -80,8 +82,10 @@ def get_event_detail(db: Session, event_id: int):
         )
     return event
 
-def get_event_seats_logic(db: Session, event_id: int):
+def get_event_seats_logic(db: Session, event_id: UUID):
     """Logic lấy sơ đồ ghế của suất chiếu"""
+    booking_service.cleanup_expired_bookings_logic(db, limit=500)
+
     # 1. Kiểm tra xem suất chiếu này có thật không
     event = event_repo.get_event_by_id(db, event_id)
     if not event:
@@ -93,7 +97,7 @@ def get_event_seats_logic(db: Session, event_id: int):
     # 2. Gọi Repo lấy sơ đồ ghế đã được sắp xếp chuẩn
     return event_repo.get_seats_by_event_id(db, event_id)
 
-def update_event_logic(db: Session, event_id: int, event_in: EventUpdate):
+def update_event_logic(db: Session, event_id: UUID, event_in: EventUpdate):
     """Logic cập nhật suất chiếu"""
     event = event_repo.get_event_by_id(db, event_id)
     if not event:
@@ -150,7 +154,7 @@ def update_event_logic(db: Session, event_id: int, event_in: EventUpdate):
     # Nếu Admin bấm "Lưu" nhưng không sửa chữ nào, trả về event cũ luôn (đỡ tốn công gọi DB)
     return event
 
-def delete_event_logic(db: Session, event_id: int):
+def delete_event_logic(db: Session, event_id: UUID):
     """Logic xoá suất chiếu"""
     event = event_repo.get_event_by_id(db, event_id)
     if not event:

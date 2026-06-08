@@ -9,6 +9,7 @@ from app.core.security import security_scheme, admin_only, verify_and_refresh_to
 from fastapi.security import HTTPAuthorizationCredentials
 from app.models.user import User
 from pydantic import BaseModel
+from uuid import UUID
 
 router = APIRouter()
 
@@ -60,20 +61,20 @@ def update_my_profile(
     return user_service.update_user(db, current_user.id, user_in, background_tasks)
 
 @router.get("/{user_id}", response_model=user_schema.UserResponse, dependencies=[Depends(admin_only)])
-def read_user_by_id(user_id: int, db: Session = Depends(get_db)):
+def read_user_by_id(user_id: UUID, db: Session = Depends(get_db)):
     # Lấy user theo ID
     user = user_service.get_user_by_id(db, user_id)
     return user
 
 @router.put("/{user_id}",  dependencies=[Depends(admin_only)])
-def update_user_endpoint(user_id: int, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
+def update_user_endpoint(user_id: UUID, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks,db: Session = Depends(get_db)):
     # Cập nhật user
     updated_user = user_service.update_user(db, user_id, user_in, background_tasks)
     return updated_user
 
 
 @router.delete("/{user_id}", dependencies=[Depends(admin_only)])
-def delete_user_endpoint(user_id: int, db: Session = Depends(get_db)):
+def delete_user_endpoint(user_id: UUID, db: Session = Depends(get_db)):
     result = user_service.delete_user(db, user_id)
     return {"message": "User đã được xóa thành công", **result}
 

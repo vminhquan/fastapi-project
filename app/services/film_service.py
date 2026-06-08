@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from uuid import UUID
 from fastapi import HTTPException
 from app.models.booking import Event
 from app.schemas.film import FilmCreate, FilmUpdate
@@ -27,7 +28,7 @@ def get_list_films(db: Session, skip: int = 0, limit: int =100):
     """Logic lấy danh sách phim"""
     return film_repo.get_all_films(db, skip=skip, limit=limit)
 
-def get_film_detail(db: Session, film_id: int):
+def get_film_detail(db: Session, film_id: UUID):
     """Logic lấy film theo id"""
     film = film_repo.get_film_by_id(db, film_id)
 
@@ -38,7 +39,7 @@ def get_film_detail(db: Session, film_id: int):
         )
     return film
 
-def update_film_logic(db: Session, film_id: int, film_in: FilmUpdate):
+def update_film_logic(db: Session, film_id: UUID, film_in: FilmUpdate):
     """Logic cập nhật phim"""
     film = film_repo.get_film_by_id(db, film_id)
 
@@ -90,7 +91,7 @@ def update_film_logic(db: Session, film_id: int, film_in: FilmUpdate):
 
     return updated_film
 
-def delete_film_logic(db: Session, film_id: int):
+def delete_film_logic(db: Session, film_id: UUID):
     """Logic xoá phim - Kèm chốt chặn an toàn"""
     film = film_repo.get_film_by_id(db, film_id)
     if not film:

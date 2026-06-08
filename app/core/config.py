@@ -22,12 +22,23 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     DIRECT_DATABASE_URL: str = ""
 
+    # payOS
+    PAYOS_CLIENT_ID: str = ""
+    PAYOS_API_KEY: str = ""
+    PAYOS_CHECKSUM_KEY: str = ""
+    PAYOS_BASE_URL: str = ""
+    PAYOS_RETURN_URL: str = ""
+    PAYOS_CANCEL_URL: str = ""
+    PAYOS_REQUEST_TIMEOUT: int = 15
+    BOOKING_HOLD_MINUTES: int = 5
+    BOOKING_CLEANUP_INTERVAL_SECONDS: int = 15
+
     # Resend Email API
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = ""
 
     # Email được tự động nâng quyền admin, phân tách bằng dấu phẩy nếu có nhiều email
-    ADMIN_EMAILS: str = "vmquan44@gmail.com"
+    ADMIN_EMAILS: str = ""
     
     # Báo cho Pydantic biết phải tự động tìm và đọc file .env
     model_config = SettingsConfigDict(

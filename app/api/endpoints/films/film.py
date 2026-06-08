@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 
 from app.core.database import get_db
 from app.core.security import RoleChecker 
@@ -16,12 +17,12 @@ def create_film(film_in: FilmCreate, db: Session = Depends(get_db)):
     return film_service.create_new_film(db, film_in)
 
 @router.put("/{film_id}", response_model=FilmResponse, dependencies=[Depends(admin_only)])
-def update_film(film_id: int, film_in: FilmUpdate, db: Session = Depends(get_db)):
+def update_film(film_id: UUID, film_in: FilmUpdate, db: Session = Depends(get_db)):
     """[ADMIN] Cập nhật phim chiếu"""
     return film_service.update_film_logic(db, film_id, film_in)
 
 @router.delete("/{film_id}", dependencies=[Depends(admin_only)])
-def delete_film(film_id: int, db: Session = Depends(get_db)):
+def delete_film(film_id: UUID, db: Session = Depends(get_db)):
     """[ADMIN] Xóa phim chiếu"""
     film_service.delete_film_logic(db, film_id)
     return {"message": "Đã xóa phim chiếu thành công!"}
@@ -32,6 +33,6 @@ def read_all_films(skip: int = 0, limit: int = 100, db: Session = Depends(get_db
     return film_service.get_list_films(db, skip=skip, limit=limit)
 
 @router.get("/{film_id}", response_model=FilmResponse)
-def read_film_detail(film_id: int, db: Session = Depends(get_db)):
+def read_film_detail(film_id: UUID, db: Session = Depends(get_db)):
     """[PUBLIC] Xem chi tiết 1 phim"""
     return film_service.get_film_detail(db, film_id)

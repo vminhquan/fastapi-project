@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date
+from uuid import UUID
 
 class FilmCreate(BaseModel):
     title: str
@@ -13,6 +14,6 @@ class FilmUpdate(FilmCreate):
     pass
 
 class FilmResponse(FilmCreate):
-    id: int
+    id: UUID
 
     model_config = ConfigDict(from_attributes=True)

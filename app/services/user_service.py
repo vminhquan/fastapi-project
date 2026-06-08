@@ -11,6 +11,7 @@ from jose import jwt
 from app.core.security import SECRET_KEY, ALGORITHM
 from app.repositories import token_repo
 import resend
+from uuid import UUID
 
 def _is_admin_email(email: str) -> bool:
     admin_emails = {
@@ -91,7 +92,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
     # có thể thêm logic kiểm tra ở đây nếu cần (VD: limit không được vượt quá 1000)
     return user_repo.get_all_users(db, skip=skip, limit=limit)
 
-def get_user_by_id(db: Session, user_id: int):
+def get_user_by_id(db: Session, user_id: UUID):
     user = user_repo.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
@@ -100,7 +101,7 @@ def get_user_by_id(db: Session, user_id: int):
         )
     return user
 
-def update_user(db: Session, user_id: int, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks):
+def update_user(db: Session, user_id: UUID, user_in: user_schema.UserUpdate, background_tasks: BackgroundTasks):
     # Kiểm tra user tồn tại
     user = user_repo.get_user_by_id(db, user_id)
     if not user:
@@ -148,7 +149,7 @@ def update_user(db: Session, user_id: int, user_in: user_schema.UserUpdate, back
     
     return updated_user
 
-def delete_user(db: Session, user_id: int):
+def delete_user(db: Session, user_id: UUID):
     # Kiểm tra user tồn tại
     user = user_repo.get_user_by_id(db, user_id)
     if not user:

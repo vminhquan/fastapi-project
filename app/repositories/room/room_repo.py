@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 from app.models.booking import Room
 from app.schemas.room import RoomCreate
@@ -6,7 +8,7 @@ def get_all_rooms(db: Session, skip: int = 0, limit: int = 100):
     """Lấy tất cả danh sách phòng"""
     return db.query(Room).order_by(Room.id).offset(skip).limit(limit).all()
 
-def get_room_by_id(db: Session, room_id: int):
+def get_room_by_id(db: Session, room_id: UUID):
     """Lấy phòng theo id phòng"""
     return db.query(Room).filter(Room.id == room_id).first()
 
@@ -23,7 +25,7 @@ def create_room(db: Session, room_in: RoomCreate):
     
     return new_room
 
-def update_room(db: Session, room_id: int, room_data: dict):
+def update_room(db: Session, room_id: UUID, room_data: dict):
     """Cập nhật thông tin của phòng theo id"""
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
@@ -39,7 +41,7 @@ def update_room(db: Session, room_id: int, room_data: dict):
     
     return room
 
-def delete_room(db: Session, room_id: int):
+def delete_room(db: Session, room_id: UUID):
     """Xoá phòng"""
     room = db.query(Room).filter(Room.id == room_id).first()
     

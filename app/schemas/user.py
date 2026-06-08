@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import date
+from uuid import UUID
 
 # Khuôn mẫu cơ bản
 class UserBase(BaseModel):
@@ -24,7 +25,7 @@ class UserUpdate(BaseModel):
     
 # Response
 class UserResponse(UserBase):
-    id: int
+    id: UUID
     
     # TUYỆT ĐỐI KHÔNG CÓ TRƯỜNG PASSWORD Ở ĐÂY
     # Việc này giúp lỡ bạn có return cả object, mật khẩu cũng không bị lộ ra ngoài

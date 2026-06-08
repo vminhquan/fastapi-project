@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
+from uuid import UUID
 
 class SeatStatus(str, Enum):
     AVAILABLE = "available"
@@ -8,8 +9,8 @@ class SeatStatus(str, Enum):
     
 # Ghi chú: Không có SeatCreate vì Seat được hệ thống tự động sinh ra khi tạo Event
 class SeatResponse(BaseModel):
-    id: int
-    event_id: int
+    id: UUID
+    event_id: UUID
     seat_code: str = Field(..., description="Mã ghế, VD: A1, B12")
     status: SeatStatus
     

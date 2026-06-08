@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -35,7 +36,7 @@ def read_all_events(
 @router.get("/{event_id}", response_model=EventResponse)
 @router.get("/event/{event_id}", response_model=EventResponse)
 def read_event_detail(
-    event_id: int, 
+    event_id: UUID,
     db: Session = Depends(get_db)
 ):
     """Lấy thông tin chi tiết của 1 suất chiếu"""
@@ -43,7 +44,7 @@ def read_event_detail(
 
 @router.get("/{event_id}/seats")
 def read_event_seats(
-    event_id: int, 
+    event_id: UUID,
     db: Session = Depends(get_db)
 ):
     """Lấy sơ đồ toàn bộ ghế ngồi của suất chiếu này để Frontend vẽ rạp"""
@@ -51,7 +52,7 @@ def read_event_seats(
 
 @router.put("/{event_id}", response_model=EventResponse, dependencies=[Depends(admin_only)])
 def update_event(
-    event_id: int, 
+    event_id: UUID,
     event_in: EventUpdate, 
     db: Session = Depends(get_db)
 ):
@@ -60,7 +61,7 @@ def update_event(
 
 @router.delete("/{event_id}", dependencies=[Depends(admin_only)])
 def delete_event(
-    event_id: int, 
+    event_id: UUID,
     db: Session = Depends(get_db)
 ):
     """Xoá suất chiếu (Chặn xoá nếu phim đang/đã chiếu)"""

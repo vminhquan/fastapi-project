@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.booking import Event, Film
 from app.models.user import User  # noqa: F401
+from uuid import UUID
 
 
 OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
@@ -69,7 +70,7 @@ def _find_film_from_message(db: Session, user_message: str) -> Film | None:
     return None
 
 
-def _get_events_for_film(db: Session, film_id: int) -> list[Event]:
+def _get_events_for_film(db: Session, film_id: UUID) -> list[Event]:
     now = datetime.now()
     return (
         db.query(Event)
