@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     PAYOS_REQUEST_TIMEOUT: int = 15
     BOOKING_HOLD_MINUTES: int = 5
     BOOKING_CLEANUP_INTERVAL_SECONDS: int = 15
+    APP_TIMEZONE: str = "Asia/Ho_Chi_Minh"
 
     # Resend Email API
     RESEND_API_KEY: str = ""

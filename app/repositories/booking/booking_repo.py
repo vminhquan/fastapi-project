@@ -140,18 +140,14 @@ def lock_seats_for_event(
     )
 
 
-def get_expired_held_bookings_for_update(
+def get_held_bookings_for_expiry_check(
     db: Session,
-    now: datetime,
     limit: int = 100,
 ) -> list[Booking]:
     return (
         db.query(Booking)
-        .filter(
-            Booking.status == BookingStatus.HELD,
-            Booking.hold_expires_at <= now,
-        )
-        .order_by(Booking.hold_expires_at.asc())
+        .filter(Booking.status == BookingStatus.HELD)
+        .order_by(Booking.created_at.asc())
         .limit(limit)
         .with_for_update(skip_locked=True)
         .all()

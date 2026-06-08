@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.time_utils import effective_expiry_utc, utc_now_naive
 from app.models.booking import BookingStatus, SeatStatus
 from app.models.order import OrderStatus
 from app.models.payment import PaymentStatus
@@ -126,7 +127,7 @@ def _complete_paid_payment(
         booking_repo.create_tickets(db, tickets_data)
 
     booking.status = BookingStatus.CONFIRMED
-    booking.confirmed_at = datetime.now()
+    booking.confirmed_at = utc_now_naive()
     return changed, "Thanh toán và phát hành vé thành công."
 
 
@@ -273,7 +274,12 @@ def create_payment_link_logic(
     booking = booking_repo.get_booking_for_update(db, order.booking_id)
     if not booking or booking.status != BookingStatus.HELD:
         raise HTTPException(status_code=400, detail="Booking không còn hiệu lực.")
-    if booking.hold_expires_at <= datetime.now():
+    booking_expires_at = effective_expiry_utc(
+        created_at=booking.created_at,
+        hold_expires_at=booking.hold_expires_at,
+        order_created_at=order.created_at,
+    )
+    if booking_expires_at <= utc_now_naive():
         raise HTTPException(status_code=400, detail="Booking đã hết thời gian giữ ghế.")
 
     latest_payment = payment_repo.get_latest_payment_by_order_id(db, order.id)
@@ -352,7 +358,9 @@ def create_payment_link_logic(
             order_code=provider_order_code,
             amount=order.amount,
             description=_payment_description(provider_order_code),
-            expired_at=int(booking.hold_expires_at.timestamp()),
+            expired_at=int(
+                booking_expires_at.replace(tzinfo=timezone.utc).timestamp()
+            ),
             items=items,
         )
         data = response["data"]

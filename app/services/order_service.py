@@ -14,6 +14,7 @@ from app.repositories.order import order_repo
 from app.repositories.payment import payment_repo
 from app.services import payos_service
 from app.services.payos_service import PayOSError
+from app.core.time_utils import utc_now_naive
 
 
 def _generate_order_code(db: Session) -> int:
@@ -155,7 +156,7 @@ def cancel_order(
 
         if booking.status == BookingStatus.HELD:
             booking.status = BookingStatus.CANCELLED
-            booking.cancelled_at = datetime.now()
+            booking.cancelled_at = utc_now_naive()
 
         for item in booking.booking_items:
             if item.seat.status == SeatStatus.HELD:

@@ -6,6 +6,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.time_utils import (
+    app_datetime_to_local_naive,
+    app_datetime_to_utc_naive,
+    app_now_naive,
+    effective_expiry_utc,
+    utc_now_naive,
+)
 from app.models.booking import (
     BookingStatus,
     Event,
@@ -19,13 +26,6 @@ from app.repositories.order import order_repo
 from app.repositories.payment import payment_repo
 from app.schemas.booking import BookingCreate
 from app.services import order_service
-
-
-def _normalize_datetime(value: datetime) -> datetime:
-    """Đưa datetime về dạng naive local để so sánh với model hiện tại."""
-    if value.tzinfo is not None:
-        return value.astimezone().replace(tzinfo=None)
-    return value
 
 
 # ========================================================
@@ -50,9 +50,10 @@ def create_booking_logic(
     if not event:
         raise HTTPException(status_code=404, detail="Không tìm thấy suất chiếu.")
 
-    now = datetime.now()
-    event_start_time = _normalize_datetime(event.start_time)
-    if event_start_time <= now:
+    now_local = app_now_naive()
+    now_utc = utc_now_naive()
+    event_start_time = app_datetime_to_local_naive(event.start_time)
+    if event_start_time <= now_local:
         raise HTTPException(
             status_code=400,
             detail="Suất chiếu đã bắt đầu, không thể đặt vé.",
@@ -81,8 +82,8 @@ def create_booking_logic(
         )
 
     hold_expires_at = min(
-        now + timedelta(minutes=settings.BOOKING_HOLD_MINUTES),
-        event_start_time,
+        now_utc + timedelta(minutes=settings.BOOKING_HOLD_MINUTES),
+        app_datetime_to_utc_naive(event.start_time),
     )
 
     try:
@@ -92,6 +93,8 @@ def create_booking_logic(
                 "event_id": event.id,
                 "status": BookingStatus.HELD,
                 "hold_expires_at": hold_expires_at,
+                "created_at": now_utc,
+                "updated_at": now_utc,
             },
         )
 
@@ -103,6 +106,7 @@ def create_booking_logic(
                     "booking_id": booking.id,
                     "seat_id": seat.id,
                     "unit_price": event.price,
+                    "created_at": now_utc,
                 }
             )
 
@@ -255,22 +259,31 @@ def cleanup_expired_bookings_logic(
     Link payOS đã được tạo với expiredAt cùng thời điểm nên không cần gọi hủy
     từng link trong batch cleanup.
     """
-    now = datetime.now()
-    bookings = booking_repo.get_expired_held_bookings_for_update(
+    now_utc = utc_now_naive()
+    bookings = booking_repo.get_held_bookings_for_expiry_check(
         db,
-        now=now,
         limit=min(max(limit, 1), 500),
     )
 
     try:
+        expired_count = 0
         for booking in bookings:
+            order = order_repo.get_order_by_booking_id(db, booking.id)
+            expires_at_utc = effective_expiry_utc(
+                created_at=booking.created_at,
+                hold_expires_at=booking.hold_expires_at,
+                order_created_at=order.created_at if order else None,
+            )
+            if expires_at_utc > now_utc:
+                continue
+
             booking.status = BookingStatus.EXPIRED
+            expired_count += 1
 
             for item in booking.booking_items:
                 if item.seat.status == SeatStatus.HELD:
                     item.seat.status = SeatStatus.AVAILABLE
 
-            order = order_repo.get_order_by_booking_id(db, booking.id)
             if order and order.status == OrderStatus.PENDING:
                 order.status = OrderStatus.EXPIRED
                 order.expired_at = datetime.now(timezone.utc)
@@ -280,7 +293,7 @@ def cleanup_expired_bookings_logic(
                         payment.status = PaymentStatus.CANCELLED
 
         db.commit()
-        return len(bookings)
+        return expired_count
     except Exception:
         db.rollback()
         raise
@@ -292,7 +305,7 @@ def cleanup_expired_tickets_logic(
 ) -> int:
     tickets = booking_repo.get_expired_issued_tickets_for_update(
         db,
-        now=datetime.now(),
+        now=app_now_naive(),
         limit=min(max(limit, 1), 500),
     )
 
@@ -319,17 +332,21 @@ def use_ticket_logic(db: Session, qr_token: str):
         raise HTTPException(status_code=409, detail="Vé đã hết hiệu lực.")
 
     event = ticket.booking_item.booking.event
-    now = datetime.now()
-    film_end_time = event.end_time - timedelta(minutes=15)
+    now = app_now_naive()
+    event_start_time = app_datetime_to_local_naive(event.start_time)
+    film_end_time = (
+        app_datetime_to_local_naive(event.end_time)
+        - timedelta(minutes=15)
+    )
     if film_end_time <= now:
         ticket.status = TicketStatus.EXPIRED
         db.commit()
         raise HTTPException(status_code=409, detail="Vé đã hết hiệu lực.")
-    if event.start_time > now:
+    if event_start_time > now:
         raise HTTPException(status_code=409, detail="Suất chiếu chưa bắt đầu.")
 
     ticket.status = TicketStatus.USED
-    ticket.used_at = datetime.now()
+    ticket.used_at = utc_now_naive()
     db.commit()
     db.refresh(ticket)
     return ticket

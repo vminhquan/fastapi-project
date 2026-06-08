@@ -1,7 +1,7 @@
-from datetime import datetime
 from sqlalchemy import UniqueConstraint, Column, Integer, String, DateTime, ForeignKey, Enum, Text, Date
 from sqlalchemy.orm import relationship
 from app.core.database import Base
+from app.core.time_utils import utc_now_naive
 import enum
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -87,10 +87,10 @@ class Booking(Base):
     )
 
     hold_expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=utc_now_naive)
     updated_at = Column(DateTime,
-    default=datetime.now,
-    onupdate=datetime.now,
+    default=utc_now_naive,
+    onupdate=utc_now_naive,
     nullable=False,)
 
     confirmed_at = Column(DateTime, nullable=True)
@@ -127,7 +127,7 @@ class BookingItem(Base):
     unit_price = Column(Integer, nullable=False)
     created_at = Column(
         DateTime,
-        default=datetime.now,
+        default=utc_now_naive,
         nullable=False,
     )
     booking = relationship("Booking", back_populates="booking_items")
@@ -155,7 +155,7 @@ class Ticket(Base):
     )
 
     qr_token = Column(String(255), nullable=False, unique=True)
-    issued_at = Column(DateTime, nullable=False, default=datetime.now)
+    issued_at = Column(DateTime, nullable=False, default=utc_now_naive)
     used_at = Column(DateTime, nullable=True)
     status = Column(Enum(TicketStatus), nullable=False, default=TicketStatus.ISSUED)
 
