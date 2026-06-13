@@ -2,7 +2,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.booking import Booking, BookingItem, Event
-from app.models.order import Order
+from app.models.order import Order, OrderStatus
 
 def _with_order_details(query):
     return query.options(
@@ -81,7 +81,15 @@ def get_orders_by_user_id(
     """Lấy đơng hàng theo user id"""
     return (
         _with_order_details(db.query(Order))
-        .filter(Order.user_id == user_id)
+        .filter(
+            Order.user_id == user_id,
+            Order.status.in_(
+                [
+                    OrderStatus.PENDING,
+                    OrderStatus.PAID,
+                ]
+            ),
+        )
         .order_by(Order.created_at.desc())
         .offset(skip)
         .limit(limit)
