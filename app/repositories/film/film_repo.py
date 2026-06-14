@@ -18,6 +18,7 @@ def get_all_films(
     skip: int = 0,
     limit: int = 100,
     search: str | None = None,
+    is_hot: bool | None = None,
 ):
     """Lấy danh sách phim, chỉ tìm kiếm theo tên phim."""
     query = db.query(Film)
@@ -25,6 +26,8 @@ def get_all_films(
         query = query.filter(
             Film.title.ilike(f"%{_escape_like(search)}%", escape="\\")
         )
+    if is_hot is not None:
+        query = query.filter(Film.is_hot.is_(is_hot))
 
     total = query.count()
     films = (
@@ -38,6 +41,25 @@ def get_all_films(
         .all()
     )
     return films, total
+
+
+def get_hot_films(db: Session, limit: int = 8):
+    return (
+        db.query(Film)
+        .filter(Film.is_hot.is_(True))
+        .order_by(
+            Film.created_at.desc(),
+            Film.release_date.desc(),
+            Film.id.desc(),
+        )
+        .limit(limit)
+        .all()
+    )
+
+
+def count_hot_films(db: Session) -> int:
+    return db.query(Film).filter(Film.is_hot.is_(True)).count()
+
 
 def get_film_by_id(db: Session, film_id: UUID):
     "Lấy film theo id film"

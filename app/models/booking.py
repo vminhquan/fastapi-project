@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     Column,
     Date,
     DateTime,
@@ -52,6 +53,7 @@ class Film(Base):
     description = Column(Text, nullable=True)               # Mô tả phim
     release_date = Column(Date, nullable=True)              # Ngày công chiếu
     poster_url = Column(String(500), nullable=True)         # Link ảnh poster 
+    is_hot = Column(Boolean, nullable=False, default=False, server_default="false", index=True)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),

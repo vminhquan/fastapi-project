@@ -31,12 +31,20 @@ def delete_film(film_id: UUID, db: Session = Depends(get_db)):
     film_service.delete_film_logic(db, film_id)
     return {"message": "Đã xóa phim chiếu thành công!"}
 
+
+@router.get("/hot", response_model=list[FilmResponse])
+def read_hot_films(db: Session = Depends(get_db)):
+    """[PUBLIC] Lấy tối đa 8 phim hot do admin lựa chọn."""
+    return film_service.get_hot_films(db)
+
+
 @router.get("/", response_model=FilmListResponse)
 def read_all_films(
     page: int = Query(1, ge=1),
     skip: int | None = Query(None, ge=0),
     limit: int = Query(100, ge=1, le=500),
     search: str | None = Query(None, max_length=255),
+    is_hot: bool | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """[PUBLIC] Lấy danh sách phim (Không cần đăng nhập cũng xem được)"""
@@ -47,6 +55,7 @@ def read_all_films(
         skip=offset,
         limit=limit,
         search=search,
+        is_hot=is_hot,
     )
 
 @router.get("/{film_id}", response_model=FilmResponse)

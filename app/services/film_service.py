@@ -1,10 +1,30 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from uuid import UUID
 from fastapi import HTTPException
 from app.models.booking import Event
 from app.schemas.film import FilmCreate, FilmUpdate
 from app.repositories.film import film_repo
 from datetime import date, datetime
+
+MAX_HOT_FILMS = 8
+HOT_FILMS_LOCK_ID = 741852
+
+
+def _ensure_hot_slot(db: Session):
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+        {"lock_id": HOT_FILMS_LOCK_ID},
+    )
+    if film_repo.count_hot_films(db) >= MAX_HOT_FILMS:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Đã đủ 8 phim hot. Hãy bỏ chọn một phim hot trước "
+                "khi thêm phim khác."
+            ),
+        )
+
 
 def create_new_film(db: Session, film_in: FilmCreate):
     """Logic tạo phim mới"""
@@ -21,7 +41,10 @@ def create_new_film(db: Session, film_in: FilmCreate):
             status_code=400,
             detail="Không hợp lệ! Ngày công chiếu không được nằm trong quá khứ."
         )
-    
+
+    if film_in.is_hot:
+        _ensure_hot_slot(db)
+
     return film_repo.create_film(db, film_in.model_dump())
 
 def get_list_films(
@@ -31,6 +54,7 @@ def get_list_films(
     skip: int = 0,
     limit: int = 100,
     search: str | None = None,
+    is_hot: bool | None = None,
 ):
     """Logic lấy danh sách phim"""
     normalized_search = " ".join((search or "").split()) or None
@@ -39,6 +63,7 @@ def get_list_films(
         skip=skip,
         limit=limit,
         search=normalized_search,
+        is_hot=is_hot,
     )
     return {
         "items": films,
@@ -57,6 +82,10 @@ def get_film_detail(db: Session, film_id: UUID):
             detail="Không tìm thấy phim này!"
         )
     return film
+
+
+def get_hot_films(db: Session):
+    return film_repo.get_hot_films(db, limit=MAX_HOT_FILMS)
 
 def update_film_logic(db: Session, film_id: UUID, film_in: FilmUpdate):
     """Logic cập nhật phim"""
@@ -92,6 +121,11 @@ def update_film_logic(db: Session, film_id: UUID, film_in: FilmUpdate):
 
     if film_in.poster_url and film_in.poster_url != film.poster_url:
         film_data["poster_url"] = film_in.poster_url
+
+    if film_in.is_hot and not film.is_hot:
+        _ensure_hot_slot(db)
+    if film_in.is_hot != film.is_hot:
+        film_data["is_hot"] = film_in.is_hot
 
     # xử lí đổi ngày công chiếu
     if film_in.release_date and film_in.release_date != film.release_date:

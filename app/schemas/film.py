@@ -9,6 +9,7 @@ class FilmCreate(BaseModel):
     description: str
     release_date: date
     poster_url: str
+    is_hot: bool = False
 
 class FilmUpdate(FilmCreate):
     pass
