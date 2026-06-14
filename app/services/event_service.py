@@ -6,7 +6,6 @@ from app.repositories.room import room_repo
 from app.schemas.event import EventCreate,EventUpdate
 from app.services import booking_service
 from app.core.time_utils import app_now_naive
-from app.core.ttl_cache import public_cache
 from fastapi import HTTPException
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -66,7 +65,7 @@ def create_new_event(db: Session, event_in: EventCreate):
         
     # Lưu một phát toàn bộ ghế xuống Database
     event_repo.bulk_create_seats(db, seats_to_create)
-    public_cache.delete_prefix("event-schedule:")
+
     return new_event
 
 def get_list_events(db: Session, skip: int = 0, limit: int = 100):
@@ -83,14 +82,7 @@ def get_schedule(
     limit: int = 100,
 ):
     """Lấy lịch chiếu công khai bằng một truy vấn tổng hợp."""
-    cache_key = (
-        f"event-schedule:{film_id or ''}:{room_id or ''}:{skip}:{limit}"
-    )
-    cached = public_cache.get(cache_key)
-    if cached is not None:
-        return cached
-
-    result = event_repo.get_event_schedule(
+    return event_repo.get_event_schedule(
         db,
         film_id=film_id,
         room_id=room_id,
@@ -98,8 +90,6 @@ def get_schedule(
         skip=skip,
         limit=min(max(limit, 1), 500),
     )
-    public_cache.set(cache_key, result, ttl_seconds=3)
-    return result
 
 
 def get_event_detail(db: Session, event_id: UUID):
@@ -180,7 +170,6 @@ def update_event_logic(db: Session, event_id: UUID, event_in: EventUpdate):
     # 3. Gọi tầng Repo để thực thi Update nếu có sự thay đổi
     if event_data:
         updated_event = event_repo.update_event(db, event_id, event_data)
-        public_cache.delete_prefix("event-schedule:")
         return updated_event
         
     # Nếu Admin bấm "Lưu" nhưng không sửa chữ nào, trả về event cũ luôn (đỡ tốn công gọi DB)
@@ -212,6 +201,4 @@ def delete_event_logic(db: Session, event_id: UUID):
             detail="Không thể xoá! Suất chiếu này đã có booking/vé phát sinh, cần giữ lại để bảo vệ lịch sử giao dịch."
         )
     
-    deleted = event_repo.delete_event(db, event_id)
-    public_cache.delete_prefix("event-schedule:")
-    return deleted
+    return event_repo.delete_event(db, event_id)
