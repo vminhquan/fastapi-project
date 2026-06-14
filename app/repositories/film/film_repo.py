@@ -4,9 +4,36 @@ from sqlalchemy.orm import Session
 from app.models.booking import Film
 from app.schemas.film import FilmCreate
 
-def get_all_films(db: Session, skip: int = 0, limit: int = 100):
-    """Lấy tất cả danh sách phim"""
-    return db.query(Film).order_by(Film.id).offset(skip).limit(limit).all()
+
+def _escape_like(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+
+
+def get_all_films(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+):
+    """Lấy danh sách phim, chỉ tìm kiếm theo tên phim."""
+    query = db.query(Film)
+    if search:
+        query = query.filter(
+            Film.title.ilike(f"%{_escape_like(search)}%", escape="\\")
+        )
+
+    total = query.count()
+    films = (
+        query.order_by(Film.title.asc(), Film.id.asc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return films, total
 
 def get_film_by_id(db: Session, film_id: UUID):
     "Lấy film theo id film"

@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
 from app.core.database import get_db
 from app.core.security import RoleChecker 
-from app.schemas.film import FilmCreate, FilmResponse,FilmUpdate
+from app.schemas.film import (
+    FilmCreate,
+    FilmListResponse,
+    FilmResponse,
+    FilmUpdate,
+)
 from app.services import film_service
 
 router = APIRouter()
@@ -27,10 +31,23 @@ def delete_film(film_id: UUID, db: Session = Depends(get_db)):
     film_service.delete_film_logic(db, film_id)
     return {"message": "Đã xóa phim chiếu thành công!"}
 
-@router.get("/", response_model=List[FilmResponse])
-def read_all_films(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("/", response_model=FilmListResponse)
+def read_all_films(
+    page: int = Query(1, ge=1),
+    skip: int | None = Query(None, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    search: str | None = Query(None, max_length=255),
+    db: Session = Depends(get_db),
+):
     """[PUBLIC] Lấy danh sách phim (Không cần đăng nhập cũng xem được)"""
-    return film_service.get_list_films(db, skip=skip, limit=limit)
+    offset = skip if skip is not None else (page - 1) * limit
+    return film_service.get_list_films(
+        db,
+        page=page,
+        skip=offset,
+        limit=limit,
+        search=search,
+    )
 
 @router.get("/{film_id}", response_model=FilmResponse)
 def read_film_detail(film_id: UUID, db: Session = Depends(get_db)):

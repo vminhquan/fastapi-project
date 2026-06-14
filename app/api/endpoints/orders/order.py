@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import admin_only, any_user
 from app.models.user import User
-from app.schemas.order import OrderResponse
+from app.schemas.order import OrderListResponse, OrderResponse
 from app.schemas.payment import CancelPaymentRequest
 from app.services import booking_service, order_service
 
@@ -18,10 +18,12 @@ router = APIRouter()
 # ========================================================
 # 1. USER: XEM DANH SÁCH ĐƠN HÀNG CỦA CHÍNH MÌNH
 # ========================================================
-@router.get("/me", response_model=List[OrderResponse])
+@router.get("/me", response_model=OrderListResponse)
 def get_my_orders(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    page: int = Query(1, ge=1),
+    skip: int | None = Query(None, ge=0),
+    limit: int = Query(5, ge=1, le=100),
+    search: str | None = Query(None, max_length=255),
     db: Session = Depends(get_db),
     current_user: User = Depends(any_user),
 ):
@@ -30,8 +32,10 @@ def get_my_orders(
     return order_service.get_my_orders(
         db,
         current_user_id=current_user.id,
-        skip=skip,
+        page=page,
+        skip=skip if skip is not None else (page - 1) * limit,
         limit=limit,
+        search=search,
     )
 
 

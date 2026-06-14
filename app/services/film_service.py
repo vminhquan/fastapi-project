@@ -24,9 +24,28 @@ def create_new_film(db: Session, film_in: FilmCreate):
     
     return film_repo.create_film(db, film_in.model_dump())
 
-def get_list_films(db: Session, skip: int = 0, limit: int =100):
+def get_list_films(
+    db: Session,
+    *,
+    page: int = 1,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+):
     """Logic lấy danh sách phim"""
-    return film_repo.get_all_films(db, skip=skip, limit=limit)
+    normalized_search = " ".join((search or "").split()) or None
+    films, total = film_repo.get_all_films(
+        db,
+        skip=skip,
+        limit=limit,
+        search=normalized_search,
+    )
+    return {
+        "items": films,
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
 
 def get_film_detail(db: Session, film_id: UUID):
     """Logic lấy film theo id"""

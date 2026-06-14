@@ -1,7 +1,7 @@
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.booking import Booking, BookingItem, Event
+from app.models.booking import Booking, BookingItem, Event, Film
 from app.models.order import Order, OrderStatus
 
 def _with_order_details(query):
@@ -76,11 +76,15 @@ def get_orders_by_user_id(
     db: Session,
     user_id: UUID,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5,
+    search: str | None = None,
 ):
-    """Lấy đơng hàng theo user id"""
-    return (
-        _with_order_details(db.query(Order))
+    """Lấy đơn hàng của user, tìm kiếm theo tên phim."""
+    query = (
+        db.query(Order)
+        .join(Booking, Order.booking_id == Booking.id)
+        .join(Event, Booking.event_id == Event.id)
+        .join(Film, Event.film_id == Film.id)
         .filter(
             Order.user_id == user_id,
             Order.status.in_(
@@ -90,11 +94,26 @@ def get_orders_by_user_id(
                 ]
             ),
         )
+    )
+    if search:
+        escaped_search = (
+            search.replace("\\", "\\\\")
+            .replace("%", "\\%")
+            .replace("_", "\\_")
+        )
+        query = query.filter(
+            Film.title.ilike(f"%{escaped_search}%", escape="\\")
+        )
+
+    total = query.count()
+    orders = (
+        _with_order_details(query)
         .order_by(Order.created_at.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+    return orders, total
 
 
 def get_order_for_update(db: Session, order_id: UUID):

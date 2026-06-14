@@ -53,3 +53,10 @@ class OrderResponse(BaseModel):
     payment_status: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrderListResponse(BaseModel):
+    items: list[OrderResponse]
+    total: int
+    page: int
+    limit: int

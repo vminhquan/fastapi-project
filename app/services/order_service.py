@@ -62,15 +62,25 @@ def create_order_for_booking(
 def get_my_orders(
     db: Session,
     current_user_id: UUID,
+    page: int = 1,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 5,
+    search: str | None = None,
 ):
-    return order_repo.get_orders_by_user_id(
+    normalized_search = " ".join((search or "").split()) or None
+    orders, total = order_repo.get_orders_by_user_id(
         db,
         user_id=current_user_id,
         skip=max(skip, 0),
         limit=min(max(limit, 1), 100),
+        search=normalized_search,
     )
+    return {
+        "items": orders,
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
 
 
 def get_order_detail(

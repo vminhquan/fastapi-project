@@ -17,3 +17,10 @@ class FilmResponse(FilmCreate):
     id: UUID
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FilmListResponse(BaseModel):
+    items: list[FilmResponse]
+    total: int
+    page: int
+    limit: int
