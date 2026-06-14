@@ -192,6 +192,8 @@ def _apply_payos_state(
         )
 
     previous_status = payment.status
+    previous_order_status = order.status
+    previous_booking_status = booking.status
     provider_payment_link_id = data.get("paymentLinkId") or data.get("id")
     if provider_payment_link_id:
         provider_payment_link_id = str(provider_payment_link_id)
@@ -223,7 +225,23 @@ def _apply_payos_state(
     elif provider_status == "CANCELLED":
         if payment.status != PaymentStatus.PAID:
             payment.status = PaymentStatus.CANCELLED
-        changed = previous_status != payment.status
+            if order.status == OrderStatus.PENDING:
+                order.status = OrderStatus.CANCELLED
+                order.cancelled_at = datetime.now(timezone.utc)
+
+            if booking.status == BookingStatus.HELD:
+                booking.status = BookingStatus.CANCELLED
+                booking.cancelled_at = utc_now_naive()
+                for item in booking.booking_items:
+                    if item.seat.status == SeatStatus.HELD:
+                        item.seat.status = SeatStatus.AVAILABLE
+
+        changed = (
+            previous_status != payment.status
+            or previous_order_status != order.status
+            or previous_booking_status != booking.status
+        )
+        message = "Đã hủy thanh toán, hủy vé và giải phóng ghế."
     elif payment.status == PaymentStatus.PENDING:
         changed = False
 
