@@ -28,7 +28,11 @@ def get_all_films(
 
     total = query.count()
     films = (
-        query.order_by(Film.title.asc(), Film.id.asc())
+        query.order_by(
+            Film.created_at.desc(),
+            Film.release_date.desc(),
+            Film.id.desc(),
+        )
         .offset(skip)
         .limit(limit)
         .all()

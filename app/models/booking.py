@@ -11,6 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.core.database import Base
 from app.core.time_utils import utc_now_naive
 import enum
@@ -51,6 +52,12 @@ class Film(Base):
     description = Column(Text, nullable=True)               # Mô tả phim
     release_date = Column(Date, nullable=True)              # Ngày công chiếu
     poster_url = Column(String(500), nullable=True)         # Link ảnh poster 
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        index=True,
+    )
     
     # Mối quan hệ 1-N: 1 Phim có nhiều Suất chiếu (Event)
     events = relationship("Event", back_populates="film")
