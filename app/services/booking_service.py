@@ -23,7 +23,6 @@ from app.models.order import OrderStatus
 from app.models.payment import PaymentStatus
 from app.repositories.booking import booking_repo
 from app.repositories.order import order_repo
-from app.repositories.payment import payment_repo
 from app.schemas.booking import BookingCreate
 from app.services import order_service
 
@@ -268,7 +267,7 @@ def cleanup_expired_bookings_logic(
     try:
         expired_count = 0
         for booking in bookings:
-            order = order_repo.get_order_by_booking_id(db, booking.id)
+            order = booking.order
             expires_at_utc = effective_expiry_utc(
                 created_at=booking.created_at,
                 hold_expires_at=booking.hold_expires_at,
@@ -288,7 +287,7 @@ def cleanup_expired_bookings_logic(
                 order.status = OrderStatus.EXPIRED
                 order.expired_at = datetime.now(timezone.utc)
 
-                for payment in payment_repo.get_payments_by_order_id(db, order.id):
+                for payment in order.payments:
                     if payment.status == PaymentStatus.PENDING:
                         payment.status = PaymentStatus.CANCELLED
 

@@ -1,6 +1,8 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from uuid import UUID
+
+
 class EventCreate(BaseModel):
     film_id: UUID = Field(..., description="ID của bộ phim")
     room_id: UUID = Field(..., description="ID của phòng chiếu")
@@ -18,3 +20,24 @@ class EventResponse(BaseModel):
     price: float
     
     model_config = ConfigDict(from_attributes=True) # dòng này để SQLAlchemy map được với Pydantic
+
+
+class EventScheduleFilm(BaseModel):
+    id: UUID
+    title: str
+    genre: str | None = None
+    duration: int
+    poster_url: str | None = None
+
+
+class EventScheduleRoom(BaseModel):
+    id: UUID
+    name: str
+    capacity: int
+
+
+class EventScheduleResponse(EventResponse):
+    available_seats: int
+    total_seats: int
+    film: EventScheduleFilm
+    room: EventScheduleRoom

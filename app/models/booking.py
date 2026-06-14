@@ -1,4 +1,15 @@
-from sqlalchemy import UniqueConstraint, Column, Integer, String, DateTime, ForeignKey, Enum, Text, Date
+from sqlalchemy import (
+    Column,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.core.time_utils import utc_now_naive
@@ -46,6 +57,10 @@ class Film(Base):
 
 class Event(Base):
     __tablename__ = "events"
+    __table_args__ = (
+        Index("ix_events_room_start_time", "room_id", "start_time"),
+        Index("ix_events_film_start_time", "film_id", "start_time"),
+    )
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     
@@ -67,6 +82,7 @@ class Seat(Base):
     __tablename__ = "seats"
     __table_args__ = (
         UniqueConstraint("event_id", "seat_code"),
+        Index("ix_seats_event_status", "event_id", "status"),
     )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -77,6 +93,9 @@ class Seat(Base):
     
 class Booking(Base):
     __tablename__ = "bookings"
+    __table_args__ = (
+        Index("ix_bookings_status_created_at", "status", "created_at"),
+    )
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     event_id = Column(UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)

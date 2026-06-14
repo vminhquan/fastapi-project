@@ -5,6 +5,7 @@ from app.repositories.film import film_repo
 from app.repositories.room import room_repo
 from app.schemas.event import EventCreate,EventUpdate
 from app.services import booking_service
+from app.core.time_utils import app_now_naive
 from fastapi import HTTPException
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -70,6 +71,27 @@ def create_new_event(db: Session, event_in: EventCreate):
 def get_list_events(db: Session, skip: int = 0, limit: int = 100):
     """Logic lấy danh sách suất chiếu"""
     return event_repo.get_all_events(db, skip=skip, limit=limit)
+
+
+def get_schedule(
+    db: Session,
+    *,
+    film_id: UUID | None = None,
+    room_id: UUID | None = None,
+    skip: int = 0,
+    limit: int = 100,
+):
+    """Lấy lịch chiếu công khai bằng một truy vấn tổng hợp."""
+    booking_service.cleanup_expired_bookings_logic(db, limit=500)
+    return event_repo.get_event_schedule(
+        db,
+        film_id=film_id,
+        room_id=room_id,
+        starts_after=app_now_naive(),
+        skip=skip,
+        limit=min(max(limit, 1), 500),
+    )
+
 
 def get_event_detail(db: Session, event_id: UUID):
     """Logic lấy suất chiếu theo event"""

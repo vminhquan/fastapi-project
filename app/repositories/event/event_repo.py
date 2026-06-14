@@ -1,8 +1,16 @@
 from uuid import UUID
 import re
 
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
-from app.models.booking import Booking, Event, Seat
+from app.models.booking import (
+    Booking,
+    Event,
+    Film,
+    Room,
+    Seat,
+    SeatStatus,
+)
 from datetime import datetime
 
 def create_event(db: Session, event_data: dict):
@@ -17,6 +25,79 @@ def create_event(db: Session, event_data: dict):
 def get_all_events(db: Session, skip: int = 0, limit: int = 100):
     """Lấy tất cả danh sách suất chiếu"""
     return db.query(Event).order_by(Event.id).offset(skip).limit(limit).all()
+
+
+def get_event_schedule(
+    db: Session,
+    *,
+    film_id: UUID | None = None,
+    room_id: UUID | None = None,
+    starts_after: datetime | None = None,
+    skip: int = 0,
+    limit: int = 100,
+):
+    """Lấy lịch chiếu, phim, phòng và số ghế trong một truy vấn."""
+    available_seats = func.sum(
+        case(
+            (Seat.status == SeatStatus.AVAILABLE, 1),
+            else_=0,
+        )
+    ).label("available_seats")
+
+    query = (
+        db.query(
+            Event,
+            Film,
+            Room,
+            func.count(Seat.id).label("total_seats"),
+            available_seats,
+        )
+        .join(Film, Film.id == Event.film_id)
+        .join(Room, Room.id == Event.room_id)
+        .outerjoin(Seat, Seat.event_id == Event.id)
+    )
+
+    if film_id is not None:
+        query = query.filter(Event.film_id == film_id)
+    if room_id is not None:
+        query = query.filter(Event.room_id == room_id)
+    if starts_after is not None:
+        query = query.filter(Event.end_time > starts_after)
+
+    rows = (
+        query.group_by(Event.id, Film.id, Room.id)
+        .order_by(Event.start_time.asc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "id": event.id,
+            "film_id": event.film_id,
+            "room_id": event.room_id,
+            "start_time": event.start_time,
+            "end_time": event.end_time,
+            "price": event.price,
+            "available_seats": int(available_count or 0),
+            "total_seats": int(total_count or 0),
+            "film": {
+                "id": film.id,
+                "title": film.title,
+                "genre": film.genre,
+                "duration": film.duration,
+                "poster_url": film.poster_url,
+            },
+            "room": {
+                "id": room.id,
+                "name": room.name,
+                "capacity": room.capacity,
+            },
+        }
+        for event, film, room, total_count, available_count in rows
+    ]
+
 
 def get_event_by_id(db: Session, event_id: UUID):
     """Lấy suất chiếu theo id"""

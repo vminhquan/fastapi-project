@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.booking import (
     Booking,
@@ -146,6 +146,10 @@ def get_held_bookings_for_expiry_check(
 ) -> list[Booking]:
     return (
         db.query(Booking)
+        .options(
+            selectinload(Booking.booking_items).joinedload(BookingItem.seat),
+            selectinload(Booking.order).selectinload(Order.payments),
+        )
         .filter(Booking.status == BookingStatus.HELD)
         .order_by(Booking.created_at.asc())
         .limit(limit)

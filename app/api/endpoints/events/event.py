@@ -4,7 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.event import EventResponse,EventCreate, EventUpdate
+from app.schemas.event import (
+    EventCreate,
+    EventResponse,
+    EventScheduleResponse,
+    EventUpdate,
+)
 from app.services import event_service
 from app.core.security import RoleChecker
 
@@ -32,6 +37,25 @@ def read_all_events(
     """Lấy danh sách tất cả suất chiếu"""
     events = event_service.get_list_events(db, skip=skip, limit=limit)
     return events
+
+
+@router.get("/schedule", response_model=List[EventScheduleResponse])
+def read_event_schedule(
+    film_id: UUID | None = None,
+    room_id: UUID | None = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """Lấy lịch chiếu kèm phim, phòng và số ghế trống."""
+    return event_service.get_schedule(
+        db,
+        film_id=film_id,
+        room_id=room_id,
+        skip=skip,
+        limit=limit,
+    )
+
 
 @router.get("/{event_id}", response_model=EventResponse)
 @router.get("/event/{event_id}", response_model=EventResponse)
