@@ -4,7 +4,14 @@ from fastapi import HTTPException
 from app.models.booking import Event
 from app.schemas.film import FilmCreate, FilmUpdate
 from app.repositories.film import film_repo
+from app.core.ttl_cache import public_cache
 from datetime import date, datetime
+
+
+def _clear_public_film_cache():
+    public_cache.delete_prefix("films:")
+    public_cache.delete_prefix("event-schedule:")
+
 
 def create_new_film(db: Session, film_in: FilmCreate):
     """Logic tạo phim mới"""
@@ -22,11 +29,32 @@ def create_new_film(db: Session, film_in: FilmCreate):
             detail="Không hợp lệ! Ngày công chiếu không được nằm trong quá khứ."
         )
     
-    return film_repo.create_film(db, film_in.model_dump())
+    film = film_repo.create_film(db, film_in.model_dump())
+    _clear_public_film_cache()
+    return film
 
 def get_list_films(db: Session, skip: int = 0, limit: int =100):
     """Logic lấy danh sách phim"""
-    return film_repo.get_all_films(db, skip=skip, limit=limit)
+    cache_key = f"films:list:{skip}:{limit}"
+    cached = public_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    films = film_repo.get_all_films(db, skip=skip, limit=limit)
+    result = [
+        {
+            "id": film.id,
+            "title": film.title,
+            "genre": film.genre,
+            "duration": film.duration,
+            "description": film.description,
+            "release_date": film.release_date,
+            "poster_url": film.poster_url,
+        }
+        for film in films
+    ]
+    public_cache.set(cache_key, result, ttl_seconds=60)
+    return result
 
 def get_film_detail(db: Session, film_id: UUID):
     """Logic lấy film theo id"""
@@ -88,7 +116,7 @@ def update_film_logic(db: Session, film_id: UUID, film_in: FilmUpdate):
     
     # lưu vào db
     updated_film = film_repo.update_film(db, film_id, film_data)
-
+    _clear_public_film_cache()
     return updated_film
 
 def delete_film_logic(db: Session, film_id: UUID):
@@ -126,4 +154,6 @@ def delete_film_logic(db: Session, film_id: UUID):
         )
    
 
-    return film_repo.delete_film(db, film_id)
+    deleted = film_repo.delete_film(db, film_id)
+    _clear_public_film_cache()
+    return deleted
