@@ -1,4 +1,6 @@
-#!/Users/minhquan/Documents/fastapi-project/.venv/bin/python3.11
+#!/bin/sh
+'''exec' "/Volumes/Macbook 2014 - Dữ liệu/Users/minhquan/Documents/fastapi-project/.venv/bin/python3" "$0" "$@"
+' '''
 # -*- coding: utf-8 -*-
 import re
 import sys

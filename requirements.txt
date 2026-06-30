@@ -4,6 +4,7 @@ SQLAlchemy
 pydantic
 pydantic-settings
 email-validator
+cryptography<46
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
