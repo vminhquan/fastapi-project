@@ -7,12 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.booking import Event, Film
-from app.models.user import User  # noqa: F401
+from app.models.user import User  
 from uuid import UUID
-
-
-OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
-
 
 def _normalize_message(message: str) -> str:
     normalized = unicodedata.normalize("NFD", message.lower().strip())
