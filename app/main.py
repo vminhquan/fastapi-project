@@ -14,6 +14,7 @@ from app.models.order import Order
 from app.models.payment import Payment
 from app.models.token import TokenBlacklist
 from app.models.user import User
+from app.models.oauth_accounts import OAuthAccount
 
 # Import các Router (các nhóm API)
 from app.api.endpoints.users import user as user_api

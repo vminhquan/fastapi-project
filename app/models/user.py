@@ -24,3 +24,8 @@ class User(Base):
     role = Column(String, default="user")
 
     orders = relationship("Order", back_populates="user")
+    oauth_accounts = relationship(
+    "OAuthAccount",
+    back_populates="user",
+    cascade="all, delete-orphan",
+)
